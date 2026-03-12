@@ -41,6 +41,11 @@ export interface MessagePreview {
   timeCreated: number;
 }
 
+export interface TokenSummary {
+  totalInput: number;
+  totalOutput: number;
+}
+
 const DB_PATH =
   process.env.DB_PATH ??
   `${process.env.HOME}/.local/share/opencode/opencode.db`;
@@ -252,21 +257,22 @@ export function getSubAgentSessions(parentId: string): SubAgentSession[] {
   try {
     const db = openDb();
     try {
+      const now = Date.now();
       const rows = db
         .query<
           { id: string; title: string; time_updated: number },
-          [string]
+          [string, number]
         >(
           `SELECT id, title, time_updated
            FROM session
            WHERE parent_id = ?
              AND time_archived IS NULL
+             AND ? - time_updated < 10000
            ORDER BY time_updated DESC
            LIMIT 30`,
         )
-        .all(parentId);
+        .all(parentId, now);
 
-      const now = Date.now();
       return rows.map((r) => {
         const agentMatch = r.title.match(/\s*\(@([\w-]+)\s+subagent\)$/);
         const agentName = agentMatch ? agentMatch[1] : null;
@@ -287,6 +293,40 @@ export function getSubAgentSessions(parentId: string): SubAgentSession[] {
   } catch (err) {
     console.warn("[db] getSubAgentSessions error:", err);
     return [];
+  }
+}
+
+export function getTokenSummary(sessionIds: string[]): TokenSummary {
+  if (sessionIds.length === 0) return { totalInput: 0, totalOutput: 0 };
+  try {
+    const db = openDb();
+    try {
+      const placeholders = sessionIds.map(() => "?").join(",");
+      const row = db
+        .query<
+          { totalInput: number | null; totalOutput: number | null },
+          string[]
+        >(
+          `SELECT
+             COALESCE(SUM(json_extract(data, '$.tokens.input')), 0) as totalInput,
+             COALESCE(SUM(json_extract(data, '$.tokens.output')), 0) as totalOutput
+           FROM part
+           WHERE message_id IN (
+             SELECT id FROM message WHERE session_id IN (${placeholders})
+           )
+             AND json_extract(data, '$.type') = 'step-finish'`,
+        )
+        .get(...sessionIds);
+      return {
+        totalInput: row?.totalInput ?? 0,
+        totalOutput: row?.totalOutput ?? 0,
+      };
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    console.warn("[db] getTokenSummary error:", err);
+    return { totalInput: 0, totalOutput: 0 };
   }
 }
 
