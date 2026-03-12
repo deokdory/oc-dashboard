@@ -1,0 +1,7 @@
+{
+  "name": "oc-dashboard",
+  "scripts": {
+    "test": "bun test",
+    "start": "bun run server.ts"
+  }
+}
