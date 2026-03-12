@@ -508,6 +508,76 @@
     const expandedSubAgents = new Set(); // sessionId — expanded sub-agent list
     const subAgentCache = new Map();     // sessionId -> SubAgentSession[]
     let lastData = null; // 최신 SSE 데이터 보관 (toggleSubAgents에서 즉시 재렌더용)
+    let selectedProjectId = 'all'; // 'all' 또는 특정 projectId
+
+    function formatNumber(n) {
+      if (n == null || isNaN(n)) return '0';
+      if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+      if (n >= 1_000) return Math.round(n / 1_000) + 'K';
+      return String(n);
+    }
+
+    function renderSidebar(data) {
+      const list = document.getElementById('sidebar-list');
+      if (!list) return;
+      const projects = data.projects || [];
+      const sessions = data.sessions || [];
+
+      // selectedProjectId가 더 이상 존재하지 않으면 'all'로 폴백
+      if (selectedProjectId !== 'all' && !projects.find(p => p.id === selectedProjectId)) {
+        selectedProjectId = 'all';
+      }
+
+      const allActive = sessions.filter(s => s.status === 'ACTIVE').length;
+
+      list.innerHTML = `
+        <div class="sidebar-item ${selectedProjectId === 'all' ? 'active' : ''}"
+             data-project-id="all"
+             onclick="selectProject('all')">
+          <span class="sidebar-item-name">All Projects</span>
+          ${allActive > 0 ? `<span class="sidebar-badge">${allActive}</span>` : ''}
+        </div>
+        ${projects.map(proj => {
+          const projSessions = sessions.filter(s => s.projectId === proj.id);
+          const activeCount = projSessions.filter(s => s.status === 'ACTIVE').length;
+          const isSelected = selectedProjectId === proj.id;
+          return `
+            <div class="sidebar-item ${isSelected ? 'active' : ''}"
+                 data-project-id="${escHtml(proj.id)}"
+                 onclick="selectProject('${escHtml(proj.id)}')">
+              <span class="sidebar-item-name">${escHtml(proj.displayName)}</span>
+              ${activeCount > 0 ? `<span class="sidebar-badge">${activeCount}</span>` : ''}
+            </div>
+          `;
+        }).join('')}
+      `;
+    }
+
+    function selectProject(projectId) {
+      selectedProjectId = projectId;
+      if (lastData) render(lastData);
+    }
+
+    function renderSummaryPanel(data) {
+      const sessions = data.sessions || [];
+      const tokenSummary = data.tokenSummary || { totalInput: 0, totalOutput: 0 };
+
+      const activeCount = sessions.filter(s => s.status === 'ACTIVE').length;
+      const recentCount = sessions.filter(s => s.status === 'RECENT').length;
+      const idleCount = sessions.filter(s => s.status === 'IDLE').length;
+
+      const statActive = document.getElementById('stat-active');
+      const statRecent = document.getElementById('stat-recent');
+      const statIdle = document.getElementById('stat-idle');
+      const statTokenIn = document.getElementById('stat-token-in');
+      const statTokenOut = document.getElementById('stat-token-out');
+
+      if (statActive) statActive.textContent = String(activeCount);
+      if (statRecent) statRecent.textContent = String(recentCount);
+      if (statIdle) statIdle.textContent = String(idleCount);
+      if (statTokenIn) statTokenIn.textContent = formatNumber(tokenSummary.totalInput);
+      if (statTokenOut) statTokenOut.textContent = formatNumber(tokenSummary.totalOutput);
+    }
 
     function checkNotifications(data) {
       if (!data.transitions || !data.transitions.length) return;
@@ -543,6 +613,8 @@
 
     function render(data) {
       lastData = data; // 최신 데이터 저장
+      renderSidebar(data);
+      renderSummaryPanel(data);
       renderProcesses(data.processes || []);
       renderProjects(data);
       // 열려있는 서브에이전트 목록 re-fetch (캐시 미스 시)
@@ -582,12 +654,17 @@
         expandedProjects.set(h.dataset.projectId, h.dataset.expanded === 'true');
       });
 
-      if (!projects.length) {
+      // selectedProjectId 필터링
+      const filteredProjects = selectedProjectId === 'all'
+        ? projects
+        : projects.filter(p => p.id === selectedProjectId);
+
+      if (!filteredProjects.length) {
         container.innerHTML = '<div class="empty-state">No projects found</div>';
         return;
       }
 
-      container.innerHTML = projects.map(proj => {
+      container.innerHTML = filteredProjects.map(proj => {
         const projSessions = sessions.filter(s => s.projectId === proj.id);
         const hasActive = projSessions.some(s => s.status === 'ACTIVE');
         // 저장된 상태 사용, 없으면 hasActive 기본값
