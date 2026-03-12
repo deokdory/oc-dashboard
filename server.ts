@@ -78,17 +78,38 @@ async function buildState(): Promise<DashboardState | { error: string }> {
     const subAgentCounts = getSubAgentCounts(sessionIds);
     const tokenSummary = getTokenSummary(sessionIds);
 
-    const sessions: SessionWithCounts[] = rawSessions.map(s => ({
-      ...s,
-      subAgentCount: subAgentCounts[s.id]?.active ?? 0,
-      activeSubAgentCount: subAgentCounts[s.id]?.active ?? 0,
-    }));
+    const processes = await getOpenCodeProcesses();
+    const activeCwds = new Set(processes.map(p => p.cwd).filter(Boolean));
+
+    const newestSessionPerCwd = new Map<string, string>();
+    for (const s of rawSessions) {
+      if (!activeCwds.has(s.directory)) continue;
+      const existing = newestSessionPerCwd.get(s.directory);
+      if (!existing) {
+        newestSessionPerCwd.set(s.directory, s.id);
+      } else {
+        const existingSession = rawSessions.find(r => r.id === existing)!;
+        if (s.timeUpdated > existingSession.timeUpdated) {
+          newestSessionPerCwd.set(s.directory, s.id);
+        }
+      }
+    }
+    const processActiveIds = new Set(newestSessionPerCwd.values());
+
+    const sessions: SessionWithCounts[] = rawSessions.map(s => {
+      const isProcessActive = processActiveIds.has(s.id);
+      return {
+        ...s,
+        status: isProcessActive && s.status !== "ACTIVE" ? "ACTIVE" as const : s.status,
+        subAgentCount: subAgentCounts[s.id]?.active ?? 0,
+        activeSubAgentCount: subAgentCounts[s.id]?.active ?? 0,
+      };
+    });
 
     const nonIdleIds = sessions.filter(s => s.status !== "IDLE").map(s => s.id);
     const todos = batchGetSessionTodos(nonIdleIds);
     const messages = batchGetLastMessages(nonIdleIds);
 
-    const processes = await getOpenCodeProcesses();
     const transitions = detectTransitions(sessions);
 
     return {

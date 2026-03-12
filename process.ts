@@ -1,0 +1,73 @@
+import { $ } from "bun";
+
+export interface OcProcess {
+  pid: number;
+  cpu: string;
+  mem: string;
+  elapsed: string;
+  cwd: string;
+}
+
+function isMainOpenCodeProcess(command: string): boolean {
+  const trimmed = command.trim();
+  
+  // Match: "opencode" exactly, or ends with "/opencode", or starts with "opencode "
+  if (trimmed === "opencode") return true;
+  if (trimmed.endsWith("/opencode")) return true;
+  if (/^opencode\s+/.test(trimmed)) return true;
+  
+  // Exclude child processes
+  if (
+    trimmed.includes("pyright") ||
+    trimmed.includes("langserver") ||
+    trimmed.includes("node") ||
+    trimmed.includes("python")
+  ) {
+    return false;
+  }
+  
+  return false;
+}
+
+async function getCwd(pid: number): Promise<string> {
+  try {
+    // macOS: lsof -p PID -a -d cwd -Fn
+    const out = await $`lsof -p ${pid} -a -d cwd -Fn`.text();
+    // Output format: "n/path/to/cwd"
+    const match = out.split("\n").find((l) => l.startsWith("n"));
+    return match ? match.slice(1).trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+export async function getOpenCodeProcesses(): Promise<OcProcess[]> {
+  const psOutput = await $`ps aux`.text();
+  const lines = psOutput.trim().split("\n").slice(1); // Remove header
+  
+  const processes: OcProcess[] = [];
+  
+  for (const line of lines) {
+    const cols = line.trim().split(/\s+/);
+    
+    // ps aux columns: USER PID %CPU %MEM VSZ RSS TTY STAT START TIME COMMAND...
+    // COMMAND starts at index 10
+    if (cols.length < 11) continue;
+    
+    const command = cols.slice(10).join(" ");
+    
+    if (!isMainOpenCodeProcess(command)) continue;
+    
+    const pid = parseInt(cols[1], 10);
+    if (isNaN(pid)) continue;
+    
+    const cpu = cols[2];
+    const mem = cols[3];
+    const elapsed = cols[9]; // TIME column
+    const cwd = await getCwd(pid);
+    
+    processes.push({ pid, cpu, mem, elapsed, cwd });
+  }
+  
+  return processes;
+}
