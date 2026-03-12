@@ -26,6 +26,14 @@ export interface Todo {
   position: number;
 }
 
+export interface SubAgentSession {
+  id: string;
+  title: string;
+  agentName: string | null;
+  status: "ACTIVE" | "RECENT" | "IDLE";
+  timeUpdated: number;
+}
+
 export interface MessagePreview {
   role: string;
   agent: string | null;
@@ -95,7 +103,7 @@ function deriveDisplayName(worktree: string, name: string | null): string {
 
 export function getActiveSessions(
   projectId: string,
-  limit = 20,
+  limit = 5,
 ): Session[] {
   try {
     const db = openDb();
@@ -117,7 +125,7 @@ export function getActiveSessions(
           `SELECT id, project_id, title, directory, time_updated,
                   summary_additions, summary_deletions, summary_files
            FROM session
-           WHERE project_id = ? AND time_archived IS NULL
+           WHERE project_id = ? AND time_archived IS NULL AND parent_id IS NULL
            ORDER BY time_updated DESC
            LIMIT ?`,
         )
@@ -152,6 +160,86 @@ function classifyStatus(
   if (delta < 10_000) return "ACTIVE";
   if (delta < 300_000) return "RECENT";
   return "IDLE";
+}
+
+export function getSubAgentCounts(
+  sessionIds: string[],
+): Record<string, { total: number; active: number }> {
+  if (sessionIds.length === 0) return {};
+  try {
+    const db = openDb();
+    try {
+      const now = Date.now();
+      const placeholders = sessionIds.map(() => "?").join(",");
+      const rows = db
+        .query<
+          { parent_id: string; total: number; active: number },
+          [number, ...string[]]
+        >(
+          `SELECT parent_id,
+                  COUNT(*) as total,
+                  SUM(CASE WHEN ? - time_updated < 10000 THEN 1 ELSE 0 END) as active
+           FROM session
+           WHERE parent_id IN (${placeholders})
+             AND time_archived IS NULL
+           GROUP BY parent_id`,
+        )
+        .all(now, ...sessionIds);
+
+      const result: Record<string, { total: number; active: number }> = {};
+      for (const r of rows) {
+        result[r.parent_id] = { total: r.total, active: r.active };
+      }
+      return result;
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    console.warn("[db] getSubAgentCounts error:", err);
+    return {};
+  }
+}
+
+export function getSubAgentSessions(parentId: string): SubAgentSession[] {
+  try {
+    const db = openDb();
+    try {
+      const rows = db
+        .query<
+          { id: string; title: string; time_updated: number },
+          [string]
+        >(
+          `SELECT id, title, time_updated
+           FROM session
+           WHERE parent_id = ?
+             AND time_archived IS NULL
+           ORDER BY time_updated DESC
+           LIMIT 30`,
+        )
+        .all(parentId);
+
+      const now = Date.now();
+      return rows.map((r) => {
+        const agentMatch = r.title.match(/\s*\(@([\w-]+)\s+subagent\)$/);
+        const agentName = agentMatch ? agentMatch[1] : null;
+        const cleanTitle = agentMatch
+          ? r.title.slice(0, r.title.length - agentMatch[0].length).trim()
+          : r.title;
+        return {
+          id: r.id,
+          title: cleanTitle,
+          agentName,
+          status: classifyStatus(now, r.time_updated),
+          timeUpdated: r.time_updated,
+        };
+      });
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    console.warn("[db] getSubAgentSessions error:", err);
+    return [];
+  }
 }
 
 export function getSessionTodos(sessionId: string): Todo[] {
