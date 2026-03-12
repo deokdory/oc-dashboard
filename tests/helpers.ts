@@ -1,9 +1,9 @@
 import { Database } from "bun:sqlite";
+import { mkdtempSync, rmSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 
-export function createTestDb(): Database {
-  const db = new Database(":memory:");
-
-  // Create project table
+function applySchema(db: Database): void {
   db.exec(`
     CREATE TABLE project (
       id TEXT PRIMARY KEY,
@@ -13,7 +13,6 @@ export function createTestDb(): Database {
     )
   `);
 
-  // Create session table
   db.exec(`
     CREATE TABLE session (
       id TEXT PRIMARY KEY,
@@ -30,7 +29,6 @@ export function createTestDb(): Database {
     )
   `);
 
-  // Create message table
   db.exec(`
     CREATE TABLE message (
       id TEXT PRIMARY KEY,
@@ -40,7 +38,6 @@ export function createTestDb(): Database {
     )
   `);
 
-  // Create part table
   db.exec(`
     CREATE TABLE part (
       id TEXT PRIMARY KEY,
@@ -50,7 +47,6 @@ export function createTestDb(): Database {
     )
   `);
 
-  // Create todo table
   db.exec(`
     CREATE TABLE todo (
       id TEXT PRIMARY KEY,
@@ -61,6 +57,29 @@ export function createTestDb(): Database {
       position INTEGER
     )
   `);
+}
 
+export function createTestDb(): Database {
+  const db = new Database(":memory:");
+  applySchema(db);
   return db;
+}
+
+export function createTestDbFile(): {
+  db: Database;
+  dbPath: string;
+  cleanup: () => void;
+} {
+  const tmpDir = mkdtempSync(join(tmpdir(), "oc-test-"));
+  const dbPath = join(tmpDir, "test.db");
+  const db = new Database(dbPath);
+  applySchema(db);
+  return {
+    db,
+    dbPath,
+    cleanup: () => {
+      db.close();
+      rmSync(tmpDir, { recursive: true, force: true });
+    },
+  };
 }

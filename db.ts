@@ -46,18 +46,17 @@ export interface TokenSummary {
   totalOutput: number;
 }
 
-const DB_PATH =
-  process.env.DB_PATH ??
-  `${process.env.HOME}/.local/share/opencode/opencode.db`;
-
 function openDb(): Database {
+  const dbPath =
+    process.env.DB_PATH ??
+    `${process.env.HOME}/.local/share/opencode/opencode.db`;
   try {
-    const db = new Database(DB_PATH, { readonly: true });
+    const db = new Database(dbPath, { readonly: true });
     db.exec("PRAGMA busy_timeout = 1000");
     return db;
   } catch (err) {
     throw new Error(
-      `Database unavailable: ${DB_PATH} — ${err instanceof Error ? err.message : String(err)}`
+      `Database unavailable: ${dbPath} — ${err instanceof Error ? err.message : String(err)}`
     );
   }
 }
