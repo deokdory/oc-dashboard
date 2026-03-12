@@ -416,6 +416,44 @@
       font-style: italic;
       margin-top: 4px;
     }
+
+    /* agent-tag */
+    .agent-tag {
+      display: inline-flex;
+      align-items: center;
+      background: #1c2128;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 10px;
+      padding: 1px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-left: 6px;
+      flex-shrink: 0;
+    }
+
+    /* git-diff */
+    .git-diff {
+      font-size: 11px;
+      margin-top: 4px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .git-diff-add {
+      color: var(--active);
+      font-weight: 600;
+    }
+
+    .git-diff-del {
+      color: #f85149;
+      font-weight: 600;
+    }
+
+    .git-diff-files {
+      color: var(--text-muted);
+    }
   </style>
 </head>
 <body>
@@ -703,9 +741,15 @@
     function renderSessionCard(session, todos, msg) {
       const statusClass = session.status.toLowerCase();
       const todoHtml = todos.length > 0 ? renderTodoProgress(todos) : '';
+
+      // 에이전트 태그
+      const agentTag = (msg && msg.agent)
+        ? `<span class="agent-tag">${escHtml(msg.agent)}</span>`
+        : '';
+
       let msgHtml = '';
       if (msg) {
-        msgHtml = `<div class="message-preview"><span class="message-role">${escHtml(msg.agent || msg.role)}: </span>${escHtml(msg.textPreview || '')}</div>`;
+        msgHtml = `<div class="message-preview"><span class="message-role">${escHtml(msg.role)}: </span>${escHtml(msg.textPreview || '')}</div>`;
       } else if (msg === null) {
         msgHtml = '<div class="message-preview">No messages yet</div>';
       }
@@ -715,15 +759,30 @@
         ? `<span style="color:var(--text-muted);font-size:11px;margin-right:8px">${relativeTime(session.timeUpdated)}</span>`
         : '';
 
-      // sub-agent badge
+      // git diff (null-safe: 모두 null이거나 0이면 미렌더링)
+      let gitDiffHtml = '';
+      const adds = session.summaryAdditions;
+      const dels = session.summaryDeletions;
+      const files = session.summaryFiles;
+      if (adds != null || dels != null || files != null) {
+        const hasContent = (adds || 0) > 0 || (dels || 0) > 0 || (files || 0) > 0;
+        if (hasContent) {
+          gitDiffHtml = `
+            <div class="git-diff">
+              <span class="git-diff-add">+${adds || 0}</span>
+              <span class="git-diff-del">-${dels || 0}</span>
+              <span class="git-diff-files">· ${files || 0} file${(files || 0) !== 1 ? 's' : ''}</span>
+            </div>
+          `;
+        }
+      }
+
+      // sub-agent badge (ACTIVE만, 0이면 숨김)
       let badgeHtml = '';
       if (session.subAgentCount > 0) {
-        const activeText = session.activeSubAgentCount > 0
-          ? ` (${session.activeSubAgentCount} active)`
-          : '';
         const isExpanded = expandedSubAgents.has(session.id);
         const chevron = isExpanded ? '▾' : '▸';
-        badgeHtml = `<span class="sub-agent-badge" onclick="toggleSubAgents('${escHtml(session.id)}')" data-session-id="${escHtml(session.id)}">🤖 ${session.subAgentCount} agent${session.subAgentCount !== 1 ? 's' : ''}${escHtml(activeText)} ${chevron}</span>`;
+        badgeHtml = `<span class="sub-agent-badge" onclick="toggleSubAgents('${escHtml(session.id)}')" data-session-id="${escHtml(session.id)}">🤖 ${session.subAgentCount} active ${chevron}</span>`;
       }
 
       // sub-agent list (from cache or trigger fetch)
@@ -746,9 +805,11 @@
             <span style="display:flex;align-items:center">
               ${timeHtml}
               <span class="status-badge ${statusClass}">${escHtml(session.status)}</span>
+              ${agentTag}
             </span>
           </div>
           ${todoHtml}
+          ${gitDiffHtml}
           ${msgHtml}
           ${badgeHtml}
           ${subAgentListHtml}
