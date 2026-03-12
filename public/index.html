@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OC Dashboard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --card-border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --active: #238636;
+      --recent: #d29922;
+      --idle: #484f58;
+      --accent: #58a6ff;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 16px;
+      min-height: 100vh;
+    }
+
+    /* header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--card);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      border: 1px solid var(--card-border);
+    }
+
+    .connection-status { font-size: 13px; font-weight: 500; }
+    .connection-status.connected { color: var(--active); }
+    .connection-status.disconnected { color: #f85149; }
+
+    /* process-panel */
+    .process-panel {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+
+    .process-panel-inner {
+      display: flex;
+      flex-wrap: wrap;
+      overflow-x: auto;
+    }
+
+    .process-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #21262d;
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      margin: 4px;
+      font-family: monospace;
+    }
+
+    /* project-list */
+    .project-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .project-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .project-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .project-header:hover { background: #21262d; }
+
+    .project-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .session-count {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .session-list {
+      border-top: 1px solid var(--card-border);
+    }
+
+    .session-list.collapsed { display: none; }
+
+    /* session-card */
+    .session-card {
+      padding: 10px 16px;
+      border-bottom: 1px solid #21262d;
+    }
+
+    .session-card:last-child { border-bottom: none; }
+
+    .session-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .session-title {
+      font-size: 13px;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 60ch;
+    }
+
+    /* status-badge */
+    .status-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .status-badge.active {
+      background: #0f2c18;
+      color: var(--active);
+      border: 1px solid var(--active);
+    }
+
+    .status-badge.recent {
+      background: #2d2000;
+      color: var(--recent);
+      border: 1px solid var(--recent);
+    }
+
+    .status-badge.idle {
+      background: #1c1f24;
+      color: var(--idle);
+      border: 1px solid var(--idle);
+    }
+
+    /* todo-progress */
+    .todo-progress { margin: 4px 0; }
+
+    .progress-bar {
+      height: 3px;
+      background: #21262d;
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 3px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--active);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-label {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* message-preview */
+    .message-preview {
+      font-size: 11px;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-top: 4px;
+    }
+
+    .message-role { font-weight: 600; }
+
+    /* empty states */
+    .empty-state {
+      padding: 12px 16px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    /* notification banner */
+    .notification-banner {
+      background: #1c2128;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .notification-banner button {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .notification-banner button:hover { opacity: 0.85; }
+
+    /* section label */
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* chevron */
+    .chevron {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-left: 6px;
+      transition: transform 0.2s;
+    }
+
+    .project-header[data-expanded="true"] .chevron {
+      transform: rotate(90deg);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1 style="margin:0;font-size:16px;font-weight:600">⚡ OC Dashboard</h1>
+    <span id="conn-status" class="connection-status disconnected">● Disconnected</span>
+  </header>
+
+  <div id="notif-banner" class="notification-banner" style="display:none">
+    <span>Enable notifications to get alerted when sessions complete</span>
+    <button id="notif-btn">Enable</button>
+  </div>
+
+  <div id="error-banner" style="display:none; padding:8px 16px; background:#2d1b1b; color:#f85149; border-radius:8px; margin-bottom:12px; font-size:13px;"></div>
+
+  <main>
+    <section class="process-panel">
+      <div class="section-label">Running Processes</div>
+      <div class="process-panel-inner" id="process-list">
+        <span class="empty-state">No running processes</span>
+      </div>
+    </section>
+
+    <div class="project-list" id="projects-container">
+      <div class="empty-state">Loading...</div>
+    </div>
+  </main>
+
+  <script>
+    // SSE 연결
+    const es = new EventSource('/events');
+    const connStatus = document.getElementById('conn-status');
+
+    es.onopen = () => {
+      connStatus.textContent = '● Connected';
+      connStatus.className = 'connection-status connected';
+    };
+
+    es.onerror = () => {
+      connStatus.textContent = '● Disconnected';
+      connStatus.className = 'connection-status disconnected';
+    };
+
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.error) { showError(data.error); return; }
+        render(data);
+      } catch (err) {
+        showError('Failed to parse server data');
+      }
+    };
+
+    // 알림 권한 + 중복 방지
+    const notifiedSessions = new Set();
+
+    function checkNotifications(data) {
+      if (!data.transitions || !data.transitions.length) return;
+      if (Notification.permission !== 'granted') return;
+
+      for (const t of data.transitions) {
+        if (t.from === 'ACTIVE' && t.to === 'IDLE' && !notifiedSessions.has(t.sessionId)) {
+          new Notification('✅ OC Dashboard', {
+            body: t.title,
+            tag: t.sessionId,
+          });
+          notifiedSessions.add(t.sessionId);
+        }
+        if (t.to === 'ACTIVE') {
+          notifiedSessions.delete(t.sessionId);
+        }
+      }
+    }
+
+    function relativeTime(ms) {
+      if (!ms) return '';
+      const delta = Date.now() - ms;
+      if (delta < 0) return 'just now';
+      const sec = Math.floor(delta / 1000);
+      if (sec < 60) return sec + 's ago';
+      const min = Math.floor(sec / 60);
+      if (min < 60) return min + 'm ago';
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return hr + 'h ago';
+      const d = Math.floor(hr / 24);
+      return d + 'd ago';
+    }
+
+    function render(data) {
+      renderProcesses(data.processes || []);
+      renderProjects(data);
+      checkNotifications(data);
+    }
+
+    function renderProcesses(processes) {
+      const panel = document.getElementById('process-list');
+      if (!processes.length) {
+        panel.innerHTML = '<span class="empty-state">No running processes</span>';
+        return;
+      }
+      panel.innerHTML = processes.map(p => `
+        <span class="process-pill">
+          <span style="color:var(--active)">●</span>
+          PID ${p.pid} &nbsp; CPU ${p.cpu}% &nbsp; MEM ${p.mem}% &nbsp; ${escHtml(p.elapsed)}
+          <span style="color:var(--text-muted)">${escHtml(p.cwd.split('/').pop() || '/')}</span>
+        </span>
+      `).join('');
+    }
+
+    function renderProjects(data) {
+      const container = document.getElementById('projects-container');
+      const projects = data.projects || [];
+      const sessions = data.sessions || [];
+      const todos = data.todos || {};
+      const messages = data.messages || {};
+
+      if (!projects.length) {
+        container.innerHTML = '<div class="empty-state">No projects found</div>';
+        return;
+      }
+
+      container.innerHTML = projects.map(proj => {
+        const projSessions = sessions.filter(s => s.projectId === proj.id);
+        const hasActive = projSessions.some(s => s.status === 'ACTIVE');
+        return renderProjectCard(proj, projSessions, todos, messages, hasActive);
+      }).join('');
+    }
+
+    function renderProjectCard(proj, sessions, todos, messages, autoExpand) {
+      const sessionHtml = sessions.length === 0
+        ? '<div class="empty-state">No active sessions</div>'
+        : sessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id])).join('');
+
+      return `
+        <div class="project-card">
+          <div class="project-header" data-expanded="${autoExpand}" onclick="toggleProject(this)">
+            <span class="project-name">${escHtml(proj.displayName)}</span>
+            <span>
+              <span class="session-count">${sessions.length} session${sessions.length !== 1 ? 's' : ''}</span>
+              <span class="chevron">▶</span>
+            </span>
+          </div>
+          <div class="session-list ${autoExpand ? '' : 'collapsed'}">
+            ${sessionHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSessionCard(session, todos, msg) {
+      const statusClass = session.status.toLowerCase();
+      const todoHtml = todos.length > 0 ? renderTodoProgress(todos) : '';
+      let msgHtml = '';
+      if (msg) {
+        msgHtml = `<div class="message-preview"><span class="message-role">${escHtml(msg.agent || msg.role)}: </span>${escHtml(msg.textPreview || '')}</div>`;
+      } else if (msg === null) {
+        msgHtml = '<div class="message-preview">No messages yet</div>';
+      }
+      // msg === undefined → IDLE session, data not fetched — show nothing
+
+      const timeHtml = session.timeUpdated
+        ? `<span style="color:var(--text-muted);font-size:11px;margin-right:8px">${relativeTime(session.timeUpdated)}</span>`
+        : '';
+
+      return `
+        <div class="session-card">
+          <div class="session-header">
+            <span class="session-title">${escHtml(session.title)}</span>
+            <span style="display:flex;align-items:center">
+              ${timeHtml}
+              <span class="status-badge ${statusClass}">${escHtml(session.status)}</span>
+            </span>
+          </div>
+          ${todoHtml}
+          ${msgHtml}
+        </div>
+      `;
+    }
+
+    function renderTodoProgress(todos) {
+      const total = todos.length;
+      const done = todos.filter(t => t.status === 'completed').length;
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      return `
+        <div class="todo-progress">
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+          <span class="progress-label">${done}/${total} tasks</span>
+        </div>
+      `;
+    }
+
+    function toggleProject(header) {
+      const list = header.nextElementSibling;
+      const expanded = header.dataset.expanded === 'true';
+      header.dataset.expanded = String(!expanded);
+      list.classList.toggle('collapsed');
+    }
+
+    function escHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function showError(msg) {
+      const banner = document.getElementById('error-banner');
+      banner.textContent = `⚠️ ${msg}`;
+      banner.style.display = 'block';
+    }
+
+    // 알림 권한 요청
+    if (Notification.permission === 'default') {
+      document.getElementById('notif-banner').style.display = 'flex';
+    }
+
+    document.getElementById('notif-btn')?.addEventListener('click', () => {
+      Notification.requestPermission().then(p => {
+        if (p === 'granted') {
+          document.getElementById('notif-banner').style.display = 'none';
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>
