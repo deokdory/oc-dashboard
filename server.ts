@@ -8,7 +8,7 @@ import {
   getTokenSummary,
 } from "./db";
 import type { Project, Session, Todo, MessagePreview, SubAgentSession, TokenSummary } from "./db";
-import type { OcProcess } from "./process";
+import { getOpenCodeProcesses, type OcProcess } from "./process";
 
 declare const Bun: {
   env: Record<string, string | undefined>;

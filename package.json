@@ -3,5 +3,8 @@
   "scripts": {
     "test": "bun test",
     "start": "bun run server.ts"
+  },
+  "dependencies": {
+    "playwright": "^1.58.2"
   }
 }
