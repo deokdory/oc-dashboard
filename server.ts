@@ -1,8 +1,8 @@
 import {
   getProjects,
-  getActiveSessions,
-  getSessionTodos,
-  getLastMessage,
+  getAllActiveSessions,
+  batchGetSessionTodos,
+  batchGetLastMessages,
   getSubAgentCounts,
   getSubAgentSessions,
 } from "./db";
@@ -71,10 +71,7 @@ async function buildState(): Promise<DashboardState | { error: string }> {
     }
 
     const projects = projectsCache;
-    const rawSessions: Session[] = [];
-    for (const project of projects) {
-      rawSessions.push(...getActiveSessions(project.id));
-    }
+    const rawSessions = getAllActiveSessions();
 
     const sessionIds = rawSessions.map(s => s.id);
     const subAgentCounts = getSubAgentCounts(sessionIds);
@@ -85,14 +82,9 @@ async function buildState(): Promise<DashboardState | { error: string }> {
       activeSubAgentCount: subAgentCounts[s.id]?.active ?? 0,
     }));
 
-    const todos: Record<string, Todo[]> = {};
-    const messages: Record<string, MessagePreview | null> = {};
-    for (const session of sessions) {
-      if (session.status !== "IDLE") {
-        todos[session.id] = getSessionTodos(session.id);
-        messages[session.id] = getLastMessage(session.id);
-      }
-    }
+    const nonIdleIds = sessions.filter(s => s.status !== "IDLE").map(s => s.id);
+    const todos = batchGetSessionTodos(nonIdleIds);
+    const messages = batchGetLastMessages(nonIdleIds);
 
     const processes = await getOpenCodeProcesses();
     const transitions = detectTransitions(sessions);

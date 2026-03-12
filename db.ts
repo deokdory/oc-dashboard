@@ -152,6 +152,54 @@ export function getActiveSessions(
   }
 }
 
+export function getAllActiveSessions(limit = 100): Session[] {
+  try {
+    const db = openDb();
+    try {
+      const rows = db
+        .query<
+          {
+            id: string;
+            project_id: string;
+            title: string;
+            directory: string;
+            time_updated: number;
+            summary_additions: number | null;
+            summary_deletions: number | null;
+            summary_files: number | null;
+          },
+          [number]
+        >(
+          `SELECT id, project_id, title, directory, time_updated,
+                  summary_additions, summary_deletions, summary_files
+           FROM session
+           WHERE time_archived IS NULL AND parent_id IS NULL
+           ORDER BY time_updated DESC
+           LIMIT ?`,
+        )
+        .all(limit);
+
+      const now = Date.now();
+      return rows.map((r) => ({
+        id: r.id,
+        projectId: r.project_id,
+        title: r.title,
+        directory: r.directory,
+        timeUpdated: r.time_updated,
+        status: classifyStatus(now, r.time_updated),
+        summaryAdditions: r.summary_additions,
+        summaryDeletions: r.summary_deletions,
+        summaryFiles: r.summary_files,
+      }));
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    console.warn("[db] getAllActiveSessions error:", err);
+    return [];
+  }
+}
+
 function classifyStatus(
   now: number,
   timeUpdated: number,
@@ -279,6 +327,53 @@ export function getSessionTodos(sessionId: string): Todo[] {
   }
 }
 
+export function batchGetSessionTodos(
+  sessionIds: string[],
+): Record<string, Todo[]> {
+  if (sessionIds.length === 0) return {};
+  try {
+    const db = openDb();
+    try {
+      const placeholders = sessionIds.map(() => "?").join(",");
+      const rows = db
+        .query<
+          {
+            session_id: string;
+            content: string;
+            status: "pending" | "in_progress" | "completed";
+            priority: "high" | "medium" | "low";
+            position: number;
+          },
+          string[]
+        >(
+          `SELECT session_id, content, status, priority, position
+           FROM todo
+           WHERE session_id IN (${placeholders})
+           ORDER BY session_id, position ASC`,
+        )
+        .all(...sessionIds);
+
+      const result: Record<string, Todo[]> = {};
+      for (const r of rows) {
+        if (!result[r.session_id]) result[r.session_id] = [];
+        result[r.session_id].push({
+          sessionId: r.session_id,
+          content: r.content,
+          status: r.status,
+          priority: r.priority,
+          position: r.position,
+        });
+      }
+      return result;
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    console.warn("[db] batchGetSessionTodos error:", err);
+    return {};
+  }
+}
+
 export function getLastMessage(sessionId: string): MessagePreview | null {
   try {
     const db = openDb();
@@ -329,5 +424,62 @@ export function getLastMessage(sessionId: string): MessagePreview | null {
   } catch (err) {
     console.warn("[db] getLastMessage error:", err);
     return null;
+  }
+}
+
+export function batchGetLastMessages(
+  sessionIds: string[],
+): Record<string, MessagePreview | null> {
+  if (sessionIds.length === 0) return {};
+  try {
+    const db = openDb();
+    try {
+      const placeholders = sessionIds.map(() => "?").join(",");
+      const rows = db
+        .query<
+          {
+            session_id: string;
+            role: string;
+            agent: string | null;
+            time_created: number;
+            text_preview: string | null;
+          },
+          string[]
+        >(
+          `SELECT m.session_id,
+                  json_extract(m.data, '$.role') as role,
+                  json_extract(m.data, '$.agent') as agent,
+                  m.time_created,
+                  (SELECT substr(json_extract(p.data, '$.text'), 1, 100)
+                   FROM part p
+                   WHERE p.message_id = m.id
+                     AND json_extract(p.data, '$.type') = 'text'
+                   ORDER BY p.time_created DESC LIMIT 1) as text_preview
+           FROM message m
+           WHERE m.session_id IN (${placeholders})
+             AND m.time_created = (
+               SELECT MAX(m2.time_created)
+               FROM message m2
+               WHERE m2.session_id = m.session_id
+             )`,
+        )
+        .all(...sessionIds);
+
+      const result: Record<string, MessagePreview | null> = {};
+      for (const r of rows) {
+        result[r.session_id] = {
+          role: r.role,
+          agent: r.agent,
+          textPreview: r.text_preview,
+          timeCreated: r.time_created,
+        };
+      }
+      return result;
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    console.warn("[db] batchGetLastMessages error:", err);
+    return {};
   }
 }
