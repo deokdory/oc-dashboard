@@ -632,23 +632,7 @@
       if (statTokenOut) statTokenOut.textContent = formatNumber(tokenSummary.totalOutput);
     }
 
-    function checkNotifications(data) {
-      if (!data.transitions || !data.transitions.length) return;
-      if (Notification.permission !== 'granted') return;
-
-      for (const t of data.transitions) {
-        if (t.from === 'ACTIVE' && t.to === 'IDLE' && !notifiedSessions.has(t.sessionId)) {
-          new Notification('✅ OC Dashboard', {
-            body: t.title,
-            tag: t.sessionId,
-          });
-          notifiedSessions.add(t.sessionId);
-        }
-        if (t.to === 'ACTIVE') {
-          notifiedSessions.delete(t.sessionId);
-        }
-      }
-    }
+    function checkNotifications(data) {}
 
     function relativeTime(ms) {
       if (!ms) return '';
@@ -665,19 +649,17 @@
     }
 
     function render(data) {
-      lastData = data; // 최신 데이터 저장
+      lastData = data;
       renderSidebar(data);
       renderSummaryPanel(data);
       renderProcesses(data.processes || []);
       renderProjects(data);
-      // 열려있는 서브에이전트 목록 re-fetch (캐시 미스 시)
       const sessions = data.sessions || [];
       for (const session of sessions) {
         if (expandedSubAgents.has(session.id) && !subAgentCache.has(session.id)) {
           fetchSubAgents(session.id);
         }
       }
-      checkNotifications(data);
     }
 
     function renderProcesses(processes) {
@@ -695,17 +677,24 @@
       `).join('');
     }
 
-    function renderProjects(data) {
-      const container = document.getElementById('projects-container');
+     function renderProjects(data) {
+       const container = document.getElementById('projects-container');
       const projects = data.projects || [];
       const sessions = data.sessions || [];
       const todos = data.todos || {};
       const messages = data.messages || {};
 
-      // selectedProjectId 필터링
-      const filteredProjects = selectedProjectId === 'all'
-        ? projects
-        : projects.filter(p => p.id === selectedProjectId);
+      if (selectedProjectId === 'all') {
+        const allSessions = [...sessions].sort((a, b) => (b.timeUpdated || 0) - (a.timeUpdated || 0));
+        if (allSessions.length === 0) {
+          container.innerHTML = '<div class="empty-state">No sessions found</div>';
+          return;
+        }
+        container.innerHTML = allSessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id])).join('');
+        return;
+      }
+
+      const filteredProjects = projects.filter(p => p.id === selectedProjectId);
 
       if (!filteredProjects.length) {
         container.innerHTML = '<div class="empty-state">No projects found</div>';
@@ -880,18 +869,7 @@
       banner.style.display = 'block';
     }
 
-    // 알림 권한 요청
-    if (Notification.permission === 'default') {
-      document.getElementById('notif-banner').style.display = 'flex';
-    }
-
-    document.getElementById('notif-btn')?.addEventListener('click', () => {
-      Notification.requestPermission().then(p => {
-        if (p === 'granted') {
-          document.getElementById('notif-banner').style.display = 'none';
-        }
-      });
-    });
+     // Notifications disabled
   </script>
 
 </body>

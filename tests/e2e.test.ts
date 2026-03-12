@@ -74,8 +74,8 @@ describeE2E("OC Dashboard v3.1 E2E", () => {
       await sidebarItems.nth(0).click();
       await page.waitForTimeout(500);
 
-      const allHeaders = page.locator(".main-content .main-header");
-      expect(await allHeaders.count()).toBeGreaterThanOrEqual(1);
+      const allSessions = page.locator(".main-content .session-card");
+      expect(await allSessions.count()).toBeGreaterThanOrEqual(1);
     } else {
       expect(itemCount).toBeGreaterThanOrEqual(1);
     }
