@@ -10,6 +10,18 @@ import {
 import type { Project, Session, Todo, MessagePreview, SubAgentSession, TokenSummary } from "./db";
 import { getOpenCodeProcesses, type OcProcess } from "./process";
 
+const ACTIVE_SESSIONS_PATH = `${Bun.env.HOME || ""}/.local/share/opencode/active-sessions.json`;
+
+async function readPluginActiveSessions(): Promise<Set<string>> {
+  try {
+    const file = Bun.file(ACTIVE_SESSIONS_PATH);
+    const text = await file.text();
+    return new Set(Object.keys(JSON.parse(text)));
+  } catch {
+    return new Set();
+  }
+}
+
 declare const Bun: {
   env: Record<string, string | undefined>;
   serve(options: { port: number; fetch(req: Request): Response | Promise<Response> }): void;
@@ -79,28 +91,34 @@ async function buildState(): Promise<DashboardState | { error: string }> {
     const tokenSummary = getTokenSummary(sessionIds);
 
     const processes = await getOpenCodeProcesses();
-    const activeCwds = new Set(processes.map(p => p.cwd).filter(Boolean));
+    const pluginActiveIds = await readPluginActiveSessions();
 
-    const newestSessionPerCwd = new Map<string, string>();
-    for (const s of rawSessions) {
-      if (!activeCwds.has(s.directory)) continue;
-      const existing = newestSessionPerCwd.get(s.directory);
-      if (!existing) {
-        newestSessionPerCwd.set(s.directory, s.id);
-      } else {
-        const existingSession = rawSessions.find(r => r.id === existing)!;
-        if (s.timeUpdated > existingSession.timeUpdated) {
+    let activeSessionIds: Set<string>;
+    if (pluginActiveIds.size > 0) {
+      activeSessionIds = pluginActiveIds;
+    } else {
+      const activeCwds = new Set(processes.map(p => p.cwd).filter(Boolean));
+      const newestSessionPerCwd = new Map<string, string>();
+      for (const s of rawSessions) {
+        if (!activeCwds.has(s.directory)) continue;
+        const existing = newestSessionPerCwd.get(s.directory);
+        if (!existing) {
           newestSessionPerCwd.set(s.directory, s.id);
+        } else {
+          const existingSession = rawSessions.find(r => r.id === existing)!;
+          if (s.timeUpdated > existingSession.timeUpdated) {
+            newestSessionPerCwd.set(s.directory, s.id);
+          }
         }
       }
+      activeSessionIds = new Set(newestSessionPerCwd.values());
     }
-    const processActiveIds = new Set(newestSessionPerCwd.values());
 
     const sessions: SessionWithCounts[] = rawSessions.map(s => {
-      const isProcessActive = processActiveIds.has(s.id);
+      const isActive = activeSessionIds.has(s.id);
       return {
         ...s,
-        status: isProcessActive && s.status !== "ACTIVE" ? "ACTIVE" as const : s.status,
+        status: isActive && s.status !== "ACTIVE" ? "ACTIVE" as const : s.status,
         subAgentCount: subAgentCounts[s.id]?.active ?? 0,
         activeSubAgentCount: subAgentCounts[s.id]?.active ?? 0,
       };

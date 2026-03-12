@@ -1,0 +1,9 @@
+{
+  "name": "oc-dashboard-plugin",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.ts",
+  "dependencies": {
+    "@opencode-ai/plugin": "1.2.24"
+  }
+}
