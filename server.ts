@@ -5,9 +5,9 @@ import {
   batchGetLastMessages,
   getSubAgentCounts,
   getSubAgentSessions,
+  getTokenSummary,
 } from "./db";
-import { getOpenCodeProcesses } from "./process";
-import type { Project, Session, Todo, MessagePreview, SubAgentSession } from "./db";
+import type { Project, Session, Todo, MessagePreview, SubAgentSession, TokenSummary } from "./db";
 import type { OcProcess } from "./process";
 
 declare const Bun: {
@@ -35,6 +35,7 @@ interface DashboardState {
   messages: Record<string, MessagePreview | null>;
   processes: OcProcess[];
   transitions: Transition[];
+  tokenSummary: TokenSummary;
   timestamp: number;
 }
 
@@ -75,10 +76,11 @@ async function buildState(): Promise<DashboardState | { error: string }> {
 
     const sessionIds = rawSessions.map(s => s.id);
     const subAgentCounts = getSubAgentCounts(sessionIds);
+    const tokenSummary = getTokenSummary(sessionIds);
 
     const sessions: SessionWithCounts[] = rawSessions.map(s => ({
       ...s,
-      subAgentCount: subAgentCounts[s.id]?.total ?? 0,
+      subAgentCount: subAgentCounts[s.id]?.active ?? 0,
       activeSubAgentCount: subAgentCounts[s.id]?.active ?? 0,
     }));
 
@@ -96,6 +98,7 @@ async function buildState(): Promise<DashboardState | { error: string }> {
       messages,
       processes,
       transitions,
+      tokenSummary,
       timestamp: Date.now(),
     };
   } catch (err) {
