@@ -19,38 +19,146 @@
 
     *, *::before, *::after { box-sizing: border-box; }
 
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      grid-template-rows: auto auto 1fr auto;
+      min-height: 100vh;
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 16px;
-      min-height: 100vh;
     }
 
     /* header */
     header {
+      grid-column: 1 / -1;
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 12px 16px;
       background: var(--card);
-      border-radius: 8px;
-      margin-bottom: 16px;
-      border: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--card-border);
     }
 
     .connection-status { font-size: 13px; font-weight: 500; }
     .connection-status.connected { color: var(--active); }
     .connection-status.disconnected { color: #f85149; }
 
+    /* sidebar */
+    .sidebar {
+      grid-row: 2 / -1;
+      overflow-y: auto;
+      background: var(--card);
+      border-right: 1px solid var(--card-border);
+      padding: 8px 0;
+    }
+
+    .sidebar-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 12px 16px 4px;
+    }
+
+    .sidebar-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-muted);
+      border-left: 3px solid transparent;
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+
+    .sidebar-item:hover {
+      background: #21262d;
+      color: var(--text);
+    }
+
+    .sidebar-item.active {
+      border-left-color: var(--accent);
+      color: var(--text);
+      background: #1c2128;
+    }
+
+    .sidebar-item-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 160px;
+    }
+
+    .sidebar-badge {
+      font-size: 10px;
+      background: #21262d;
+      border-radius: 10px;
+      padding: 1px 6px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    /* summary-panel */
+    .summary-panel {
+      display: flex;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--card-border);
+      flex-wrap: wrap;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      min-width: 100px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    /* main-content */
+    .main-content {
+      overflow-y: auto;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
     /* process-panel */
     .process-panel {
+      grid-column: 1 / -1;
       background: var(--card);
       border: 1px solid var(--card-border);
       border-radius: 8px;
       padding: 8px 12px;
-      margin-top: 16px;
       margin-bottom: 0;
       opacity: 0.6;
       font-size: 11px;
@@ -317,25 +425,57 @@
     <span id="conn-status" class="connection-status disconnected">● Disconnected</span>
   </header>
 
-  <div id="notif-banner" class="notification-banner" style="display:none">
+  <div id="notif-banner" class="notification-banner" style="grid-column:1/-1; display:none">
     <span>Enable notifications to get alerted when sessions complete</span>
     <button id="notif-btn">Enable</button>
   </div>
 
-  <div id="error-banner" style="display:none; padding:8px 16px; background:#2d1b1b; color:#f85149; border-radius:8px; margin-bottom:12px; font-size:13px;"></div>
+  <div id="error-banner" style="grid-column:1/-1; display:none; padding:8px 16px; background:#2d1b1b; color:#f85149; border-radius:8px; margin-bottom:12px; font-size:13px;"></div>
 
-  <main>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-section-label">Projects</div>
+    <div id="sidebar-list">
+      <div class="sidebar-item active" data-project-id="all">
+        <span class="sidebar-item-name">All Projects</span>
+      </div>
+    </div>
+  </aside>
+
+  <section class="summary-panel" id="summary-panel">
+    <div class="stat-card">
+      <span class="stat-value" id="stat-active">—</span>
+      <span class="stat-label">Active</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value" id="stat-recent">—</span>
+      <span class="stat-label">Recent</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value" id="stat-idle">—</span>
+      <span class="stat-label">Idle</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value" id="stat-token-in">—</span>
+      <span class="stat-label">↑ Input Tokens</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value" id="stat-token-out">—</span>
+      <span class="stat-label">↓ Output Tokens</span>
+    </div>
+  </section>
+
+  <section class="main-content" id="main-content">
     <div class="project-list" id="projects-container">
       <div class="empty-state">Loading...</div>
     </div>
+  </section>
 
-    <section class="process-panel">
-      <div class="section-label">Running Processes</div>
-      <div class="process-panel-inner" id="process-list">
-        <span class="empty-state">No running processes</span>
-      </div>
-    </section>
-  </main>
+  <section class="process-panel">
+    <div class="section-label">Running Processes</div>
+    <div class="process-panel-inner" id="process-list">
+      <span class="empty-state">No running processes</span>
+    </div>
+  </section>
 
   <script>
     // SSE 연결
