@@ -52,7 +52,8 @@
 
     /* sidebar */
     .sidebar {
-      grid-row: 2 / -1;
+      grid-row: 3;
+      grid-column: 1;
       overflow-y: auto;
       background: var(--card);
       border-right: 1px solid var(--card-border);
@@ -108,8 +109,9 @@
       flex-shrink: 0;
     }
 
-    /* summary-panel */
-    .summary-panel {
+    /* summary-bar */
+    .summary-bar {
+      grid-column: 1 / -1;
       display: flex;
       gap: 12px;
       padding: 12px 16px;
@@ -145,6 +147,8 @@
 
     /* main-content */
     .main-content {
+      grid-row: 3;
+      grid-column: 2;
       overflow-y: auto;
       padding: 16px;
       display: grid;
@@ -154,6 +158,7 @@
 
     /* process-panel */
     .process-panel {
+      grid-row: 4;
       grid-column: 1 / -1;
       background: var(--card);
       border: 1px solid var(--card-border);
@@ -225,11 +230,12 @@
 
     /* session-card */
     .session-card {
-      padding: 10px 16px;
-      border-bottom: 1px solid #21262d;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 8px;
     }
-
-    .session-card:last-child { border-bottom: none; }
 
     .session-header {
       display: flex;
@@ -417,19 +423,31 @@
       margin-top: 4px;
     }
 
-    /* agent-tag */
-    .agent-tag {
-      display: inline-flex;
-      align-items: center;
-      background: #1c2128;
-      border: 1px solid var(--accent);
+    /* agent-label — above session title */
+    .agent-label {
+      font-size: 12px;
+      font-weight: 700;
       color: var(--accent);
-      border-radius: 10px;
-      padding: 1px 8px;
-      font-size: 10px;
+      margin-bottom: 3px;
+    }
+
+    /* main content header (project name + count) */
+    .main-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      margin-top: 4px;
+    }
+
+    .main-title {
+      font-size: 15px;
       font-weight: 600;
-      margin-left: 6px;
-      flex-shrink: 0;
+    }
+
+    .main-count {
+      font-size: 12px;
+      color: var(--text-muted);
     }
 
     /* git-diff */
@@ -463,23 +481,7 @@
     <span id="conn-status" class="connection-status disconnected">● Disconnected</span>
   </header>
 
-  <div id="notif-banner" class="notification-banner" style="grid-column:1/-1; display:none">
-    <span>Enable notifications to get alerted when sessions complete</span>
-    <button id="notif-btn">Enable</button>
-  </div>
-
-  <div id="error-banner" style="grid-column:1/-1; display:none; padding:8px 16px; background:#2d1b1b; color:#f85149; border-radius:8px; margin-bottom:12px; font-size:13px;"></div>
-
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-section-label">Projects</div>
-    <div id="sidebar-list">
-      <div class="sidebar-item active" data-project-id="all">
-        <span class="sidebar-item-name">All Projects</span>
-      </div>
-    </div>
-  </aside>
-
-  <section class="summary-panel" id="summary-panel">
+  <section class="summary-bar" id="summary-panel">
     <div class="stat-card">
       <span class="stat-value" id="stat-active">—</span>
       <span class="stat-label">Active</span>
@@ -502,7 +504,21 @@
     </div>
   </section>
 
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-section-label">Projects</div>
+    <div id="sidebar-list">
+      <div class="sidebar-item active" data-project-id="all">
+        <span class="sidebar-item-name">All Projects</span>
+      </div>
+    </div>
+  </aside>
+
   <section class="main-content" id="main-content">
+    <div id="notif-banner" class="notification-banner" style="display:none">
+      <span>Enable notifications to get alerted when sessions complete</span>
+      <button id="notif-btn">Enable</button>
+    </div>
+    <div id="error-banner" style="display:none; padding:8px 16px; background:#2d1b1b; color:#f85149; border-radius:8px; margin-bottom:12px; font-size:13px;"></div>
     <div class="project-list" id="projects-container">
       <div class="empty-state">Loading...</div>
     </div>
@@ -542,7 +558,6 @@
 
     // 알림 권한 + 중복 방지
     const notifiedSessions = new Set();
-    const expandedProjects = new Map(); // projectId -> boolean (expanded state)
     const expandedSubAgents = new Set(); // sessionId — expanded sub-agent list
     const subAgentCache = new Map();     // sessionId -> SubAgentSession[]
     let lastData = null; // 최신 SSE 데이터 보관 (toggleSubAgents에서 즉시 재렌더용)
@@ -687,11 +702,6 @@
       const todos = data.todos || {};
       const messages = data.messages || {};
 
-      // innerHTML 교체 전: 현재 DOM에서 접기 상태 저장
-      document.querySelectorAll('.project-header[data-project-id]').forEach(h => {
-        expandedProjects.set(h.dataset.projectId, h.dataset.expanded === 'true');
-      });
-
       // selectedProjectId 필터링
       const filteredProjects = selectedProjectId === 'all'
         ? projects
@@ -704,47 +714,27 @@
 
       container.innerHTML = filteredProjects.map(proj => {
         const projSessions = sessions.filter(s => s.projectId === proj.id);
-        const hasActive = projSessions.some(s => s.status === 'ACTIVE');
-        // 저장된 상태 사용, 없으면 hasActive 기본값
-        const expanded = expandedProjects.has(proj.id) ? expandedProjects.get(proj.id) : hasActive;
-        return renderProjectCard(proj, projSessions, todos, messages, expanded);
+        const sessionCount = projSessions.length;
+        const sessionHtml = sessionCount === 0
+          ? '<div class="empty-state">No active sessions</div>'
+          : projSessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id])).join('');
+        return `
+          <div class="main-header">
+            <span class="main-title">${escHtml(proj.displayName)}</span>
+            <span class="main-count">${sessionCount} session${sessionCount !== 1 ? 's' : ''}</span>
+          </div>
+          ${sessionHtml}
+        `;
       }).join('');
-
-      // innerHTML 교체 후: stale 키 정리
-      const currentIds = new Set(projects.map(p => p.id));
-      for (const k of expandedProjects.keys()) {
-        if (!currentIds.has(k)) expandedProjects.delete(k);
-      }
-    }
-
-    function renderProjectCard(proj, sessions, todos, messages, autoExpand) {
-      const sessionHtml = sessions.length === 0
-        ? '<div class="empty-state">No active sessions</div>'
-        : sessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id])).join('');
-
-      return `
-        <div class="project-card">
-          <div class="project-header" data-project-id="${escHtml(proj.id)}" data-expanded="${autoExpand}" onclick="toggleProject(this)">
-            <span class="project-name">${escHtml(proj.displayName)}</span>
-            <span>
-              <span class="session-count">${sessions.length} session${sessions.length !== 1 ? 's' : ''}</span>
-              <span class="chevron">▶</span>
-            </span>
-          </div>
-          <div class="session-list ${autoExpand ? '' : 'collapsed'}">
-            ${sessionHtml}
-          </div>
-        </div>
-      `;
     }
 
     function renderSessionCard(session, todos, msg) {
       const statusClass = session.status.toLowerCase();
       const todoHtml = todos.length > 0 ? renderTodoProgress(todos) : '';
 
-      // 에이전트 태그
-      const agentTag = (msg && msg.agent)
-        ? `<span class="agent-tag">${escHtml(msg.agent)}</span>`
+      // 에이전트 라벨 (제목 위, agent-tag 대체)
+      const agentLabelHtml = (msg && msg.agent)
+        ? `<div class="agent-label">${escHtml(msg.agent)}</div>`
         : '';
 
       let msgHtml = '';
@@ -782,7 +772,7 @@
       if (session.subAgentCount > 0) {
         const isExpanded = expandedSubAgents.has(session.id);
         const chevron = isExpanded ? '▾' : '▸';
-        badgeHtml = `<span class="sub-agent-badge" onclick="toggleSubAgents('${escHtml(session.id)}')" data-session-id="${escHtml(session.id)}">🤖 ${session.subAgentCount} active ${chevron}</span>`;
+        badgeHtml = `<span class="sub-agent-badge" onclick="toggleSubAgents('${escHtml(session.id)}')" data-session-id="${escHtml(session.id)}">${session.subAgentCount} active sub-sessions ${chevron}</span>`;
       }
 
       // sub-agent list (from cache or trigger fetch)
@@ -800,12 +790,12 @@
 
       return `
         <div class="session-card">
+          ${agentLabelHtml}
           <div class="session-header">
             <span class="session-title">${escHtml(session.title)}</span>
             <span style="display:flex;align-items:center">
               ${timeHtml}
               <span class="status-badge ${statusClass}">${escHtml(session.status)}</span>
-              ${agentTag}
             </span>
           </div>
           ${todoHtml}
@@ -827,18 +817,6 @@
           <span class="progress-label">${done}/${total} tasks</span>
         </div>
       `;
-    }
-
-    function toggleProject(header) {
-      const list = header.nextElementSibling;
-      const expanded = header.dataset.expanded === 'true';
-      const newExpanded = !expanded;
-      header.dataset.expanded = String(newExpanded);
-      list.classList.toggle('collapsed');
-      // expandedProjects Map에 상태 저장
-      if (header.dataset.projectId) {
-        expandedProjects.set(header.dataset.projectId, newExpanded);
-      }
     }
 
     function renderSubAgentList(subAgents) {

@@ -16,7 +16,7 @@ if (!serverAvailable) {
 
 const describeE2E = serverAvailable ? describe : describe.skip;
 
-describeE2E("OC Dashboard v3 E2E", () => {
+describeE2E("OC Dashboard v3.1 E2E", () => {
   let browser: Browser;
   let page: Page;
 
@@ -37,24 +37,30 @@ describeE2E("OC Dashboard v3 E2E", () => {
     await browser?.close();
   });
 
-  test("1. Layout structure", async () => {
+  test("1. Layout structure (v3.1: summary-bar full width above sidebar)", async () => {
     const sidebar = page.locator(".sidebar");
     expect(await sidebar.count()).toBe(1);
     const sidebarBox = await sidebar.boundingBox();
     expect(sidebarBox).not.toBeNull();
     expect(sidebarBox!.width).toBeCloseTo(240, -1);
 
-    expect(await page.locator(".summary-panel").count()).toBe(1);
+    const summaryBar = page.locator(".summary-bar");
+    expect(await summaryBar.count()).toBe(1);
+    const summaryBox = await summaryBar.boundingBox();
+    expect(summaryBox).not.toBeNull();
+    expect(summaryBox!.width).toBeGreaterThan(sidebarBox!.width);
+    expect(summaryBox!.y).toBeLessThan(sidebarBox!.y);
+
     expect(await page.locator(".main-content").count()).toBe(1);
     expect(await page.locator(".process-panel").count()).toBe(1);
 
     await page.screenshot({
-      path: `${EVIDENCE_DIR}/task-v3-10-layout.png`,
+      path: `${EVIDENCE_DIR}/v3.1-layout.png`,
       fullPage: true,
     });
   });
 
-  test("2. Sidebar project selection + filtering", async () => {
+  test("2. Sidebar project selection + filtering (v3.1: flat session list)", async () => {
     const sidebarItems = page.locator("#sidebar-list .sidebar-item");
     const itemCount = await sidebarItems.count();
 
@@ -62,25 +68,25 @@ describeE2E("OC Dashboard v3 E2E", () => {
       await sidebarItems.nth(1).click();
       await page.waitForTimeout(500);
 
-      const filteredCards = page.locator(".main-content .project-card");
-      expect(await filteredCards.count()).toBe(1);
+      const mainHeaders = page.locator(".main-content .main-header");
+      expect(await mainHeaders.count()).toBe(1);
 
       await sidebarItems.nth(0).click();
       await page.waitForTimeout(500);
 
-      const allCards = page.locator(".main-content .project-card");
-      expect(await allCards.count()).toBeGreaterThanOrEqual(1);
+      const allHeaders = page.locator(".main-content .main-header");
+      expect(await allHeaders.count()).toBeGreaterThanOrEqual(1);
     } else {
       expect(itemCount).toBeGreaterThanOrEqual(1);
     }
 
     await page.screenshot({
-      path: `${EVIDENCE_DIR}/task-v3-10-sidebar-filter.png`,
+      path: `${EVIDENCE_DIR}/v3.1-sidebar-filter.png`,
       fullPage: true,
     });
   });
 
-  test("3. Summary panel data display", async () => {
+  test("3. Summary bar data display", async () => {
     const statActive = await page.locator("#stat-active").textContent();
     const statTokenIn = await page.locator("#stat-token-in").textContent();
     const statTokenOut = await page.locator("#stat-token-out").textContent();
@@ -102,24 +108,25 @@ describeE2E("OC Dashboard v3 E2E", () => {
     expect(statTokenOut!.trim()).toMatch(/^\d+(\.\d+)?[KM]?$/);
 
     await page.screenshot({
-      path: `${EVIDENCE_DIR}/task-v3-10-summary-panel.png`,
+      path: `${EVIDENCE_DIR}/v3.1-summary-bar.png`,
       fullPage: true,
     });
   });
 
-  test("4. Agent tag display", async () => {
-    const agentTags = page.locator(".session-card .agent-tag");
-    const count = await agentTags.count();
+  test("4. Agent label above title", async () => {
+    const agentLabels = page.locator(".session-card .agent-label");
+    const count = await agentLabels.count();
 
     if (count > 0) {
       for (let i = 0; i < count; i++) {
-        const text = await agentTags.nth(i).textContent();
+        const text = await agentLabels.nth(i).textContent();
         expect(text!.trim().length).toBeGreaterThan(0);
+        expect(text).not.toContain("⚡");
       }
     }
 
     await page.screenshot({
-      path: `${EVIDENCE_DIR}/task-v3-10-agent-tag.png`,
+      path: `${EVIDENCE_DIR}/v3.1-agent-label.png`,
       fullPage: true,
     });
   });
@@ -139,25 +146,26 @@ describeE2E("OC Dashboard v3 E2E", () => {
     expect(pageContent).not.toContain("+0 -0 · 0 files");
 
     await page.screenshot({
-      path: `${EVIDENCE_DIR}/task-v3-10-git-diff.png`,
+      path: `${EVIDENCE_DIR}/v3.1-git-diff.png`,
       fullPage: true,
     });
   });
 
-  test("6. Sub-agent badge", async () => {
+  test("6. Sub-session badge (no emoji)", async () => {
     const badges = page.locator(".sub-agent-badge");
     const count = await badges.count();
 
     if (count > 0) {
       for (let i = 0; i < count; i++) {
         const text = await badges.nth(i).textContent();
-        expect(text!.toLowerCase()).toContain("active");
+        expect(text!.toLowerCase()).toContain("sub-sessions");
         expect(text).not.toContain("0 active");
+        expect(text).not.toContain("🤖");
       }
     }
 
     await page.screenshot({
-      path: `${EVIDENCE_DIR}/task-v3-10-sub-agent.png`,
+      path: `${EVIDENCE_DIR}/v3.1-sub-sessions.png`,
       fullPage: true,
     });
   });
@@ -196,7 +204,7 @@ describeE2E("OC Dashboard v3 E2E", () => {
     await page.waitForTimeout(300);
 
     await page.screenshot({
-      path: `${EVIDENCE_DIR}/task-v3-10-selection-persist.png`,
+      path: `${EVIDENCE_DIR}/v3.1-selection-persist.png`,
       fullPage: true,
     });
   }, 15000);
@@ -209,7 +217,7 @@ describeE2E("OC Dashboard v3 E2E", () => {
     expect(exists).toBe(true);
 
     await page.screenshot({
-      path: `${EVIDENCE_DIR}/task-v3-10-notif-banner.png`,
+      path: `${EVIDENCE_DIR}/v3.1-notif-banner.png`,
       fullPage: true,
     });
   });
@@ -224,7 +232,7 @@ describeE2E("OC Dashboard v3 E2E", () => {
     expect(labelText).toContain("Running Processes");
 
     await page.screenshot({
-      path: `${EVIDENCE_DIR}/task-v3-10-process-panel.png`,
+      path: `${EVIDENCE_DIR}/v3.1-process-panel.png`,
       fullPage: true,
     });
   });
