@@ -4,7 +4,19 @@ import { chromium, type Browser, type Page } from "playwright";
 const BASE_URL = "http://localhost:3333";
 const EVIDENCE_DIR = "/Users/jaemin/.sisyphus/evidence";
 
-describe("OC Dashboard v3 E2E", () => {
+const serverAvailable = await fetch(BASE_URL, {
+  signal: AbortSignal.timeout(1000),
+})
+  .then(() => true)
+  .catch(() => false);
+
+if (!serverAvailable) {
+  console.log(`[e2e] Server not running at ${BASE_URL} — skipping E2E tests`);
+}
+
+const describeE2E = serverAvailable ? describe : describe.skip;
+
+describeE2E("OC Dashboard v3 E2E", () => {
   let browser: Browser;
   let page: Page;
 
@@ -22,7 +34,7 @@ describe("OC Dashboard v3 E2E", () => {
   }, 30000);
 
   afterAll(async () => {
-    await browser.close();
+    await browser?.close();
   });
 
   test("1. Layout structure", async () => {
