@@ -132,6 +132,14 @@
       background: rgba(63, 185, 80, 0.15);
       color: var(--recent);
     }
+    .sidebar-badge.badge-waiting {
+      background: rgba(240, 160, 48, 0.15);
+      color: #f0a030;
+    }
+    .sidebar-badge.badge-delegating {
+      background: rgba(180, 142, 255, 0.15);
+      color: #b48eff;
+    }
     .sidebar-separator {
       height: 1px;
       background: var(--card-border);
@@ -683,35 +691,50 @@
       const projects = data.projects || [];
       const sessions = data.sessions || [];
       const archivedProjectIds = new Set(data.archivedProjectIds || []);
+      const waitingSet = new Set(data.waitingSessions || []);
 
       if (selectedProjectId !== 'all' && !projects.find(p => p.id === selectedProjectId)) {
         selectedProjectId = 'all';
       }
 
+      const classifySidebar = (list) => {
+        let active = 0, waiting = 0, delegating = 0, complete = 0;
+        for (const s of list) {
+          const isW = waitingSet.has(s.id);
+          const isD = !isW && s.status !== 'ACTIVE' && s.subAgentCount > 0;
+          if (isW) waiting++;
+          else if (isD) delegating++;
+          else if (s.status === 'ACTIVE') active++;
+          else if (s.status === 'RECENT') complete++;
+        }
+        return { active, waiting, delegating, complete };
+      };
+
       const activeProjects = projects.filter(p => !archivedProjectIds.has(p.id));
       const archivedProjects = projects.filter(p => archivedProjectIds.has(p.id));
-      const allActiveCount = sessions.filter(s => s.status === 'ACTIVE').length;
-      const allCompleteCount = sessions.filter(s => s.status === 'RECENT').length;
+      const allCounts = classifySidebar(sessions);
 
-      const renderBadges = (activeCount, completeCount) => {
-        if (activeCount === 0 && completeCount === 0) return '';
+      const renderBadges = (counts) => {
+        const { active, waiting, delegating, complete } = counts;
+        if (active === 0 && waiting === 0 && delegating === 0 && complete === 0) return '';
         return `<div class="sidebar-badges">
-          ${activeCount > 0 ? `<span class="sidebar-badge badge-active">${activeCount}</span>` : ''}
-          ${completeCount > 0 ? `<span class="sidebar-badge badge-complete">${completeCount}</span>` : ''}
+          ${active > 0 ? `<span class="sidebar-badge badge-active">${active}</span>` : ''}
+          ${waiting > 0 ? `<span class="sidebar-badge badge-waiting">${waiting}</span>` : ''}
+          ${delegating > 0 ? `<span class="sidebar-badge badge-delegating">${delegating}</span>` : ''}
+          ${complete > 0 ? `<span class="sidebar-badge badge-complete">${complete}</span>` : ''}
         </div>`;
       };
 
       const renderItem = (proj, extra = '') => {
         const projSessions = sessions.filter(s => s.projectId === proj.id);
-        const activeCount = projSessions.filter(s => s.status === 'ACTIVE').length;
-        const completeCount = projSessions.filter(s => s.status === 'RECENT').length;
+        const counts = classifySidebar(projSessions);
         const isSelected = selectedProjectId === proj.id;
         return `
           <div class="sidebar-item ${isSelected ? 'active' : ''} ${extra}"
                data-project-id="${escHtml(proj.id)}"
                onclick="selectProject('${escHtml(proj.id)}')">
             <span class="sidebar-item-name">${escHtml(proj.displayName)}</span>
-            ${renderBadges(activeCount, completeCount)}
+            ${renderBadges(counts)}
           </div>
         `;
       };
@@ -729,7 +752,7 @@
              data-project-id="all"
              onclick="selectProject('all')">
           <span class="sidebar-item-name">All Projects</span>
-          ${renderBadges(allActiveCount, allCompleteCount)}
+          ${renderBadges(allCounts)}
         </div>
         <div class="sidebar-separator"></div>
         ${activeProjects.map(p => renderItem(p)).join('')}
