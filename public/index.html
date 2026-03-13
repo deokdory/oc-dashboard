@@ -11,8 +11,8 @@
       --card-border: #30363d;
       --text: #c9d1d9;
       --text-muted: #8b949e;
-      --active: #238636;
-      --recent: #d29922;
+      --active: #58a6ff;
+      --recent: #3fb950;
       --idle: #484f58;
       --accent: #58a6ff;
     }
@@ -150,10 +150,12 @@
       grid-row: 3;
       grid-column: 2;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 16px;
       display: grid;
       gap: 12px;
       align-content: start;
+      min-width: 0;
     }
 
     /* process-panel */
@@ -233,24 +235,49 @@
       background: var(--card);
       border: 1px solid var(--card-border);
       border-radius: 8px;
-      padding: 12px 16px;
-      margin-bottom: 8px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .session-card-layout {
+      display: flex;
+      align-items: stretch;
+    }
+    .session-card-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .session-card-aside {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin-left: 16px;
+    }
+    .session-card-aside-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .session-card.card-active {
+      border-color: rgba(88, 166, 255, 0.4);
+      background: linear-gradient(135deg, #0d1f33 0%, var(--card) 100%);
+    }
+    .session-card.card-recent {
+      border-color: rgba(63, 185, 80, 0.35);
+      background: linear-gradient(135deg, #0c1f12 0%, var(--card) 100%);
     }
 
-    .session-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
+    
 
     .session-title {
-      font-size: 13px;
-      font-weight: 500;
+      font-size: 16px;
+      font-weight: 600;
+      color: #e6edf3;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      max-width: 60ch;
     }
 
     /* status-badge */
@@ -265,13 +292,13 @@
     }
 
     .status-badge.active {
-      background: #0f2c18;
+      background: #122d4f;
       color: var(--active);
       border: 1px solid var(--active);
     }
 
     .status-badge.recent {
-      background: #2d2000;
+      background: #0f2c18;
       color: var(--recent);
       border: 1px solid var(--recent);
     }
@@ -282,40 +309,65 @@
       border: 1px solid var(--idle);
     }
 
-    /* todo-progress */
-    .todo-progress { margin: 4px 0; }
-
-    .progress-bar {
-      height: 3px;
-      background: #21262d;
-      border-radius: 2px;
-      overflow: hidden;
-      margin: 3px 0;
+    /* circular progress */
+    .progress-ring-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 8px;
     }
-
-    .progress-fill {
-      height: 100%;
-      background: var(--active);
-      border-radius: 2px;
-      transition: width 0.3s ease;
+    .progress-ring { transform: rotate(-90deg); transform-origin: center; }
+    .progress-ring-bg {
+      fill: none;
+      stroke: #30363d;
+      stroke-width: 5;
     }
-
-    .progress-label {
+    .progress-ring-fill {
+      fill: none;
+      stroke: var(--active);
+      stroke-width: 5;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.4s ease;
+    }
+    .card-active .progress-ring-fill { stroke: var(--active); }
+    .card-recent .progress-ring-fill { stroke: var(--recent); }
+    .progress-ring-text {
       font-size: 11px;
-      color: var(--text-muted);
+      font-weight: 600;
+      fill: var(--text);
+      dominant-baseline: central;
+      text-anchor: middle;
+    }
+    .progress-spinner svg {
+      animation: spin-ring 1s linear infinite;
+    }
+    @keyframes spin-ring {
+      to { transform: rotate(360deg); }
     }
 
     /* message-preview */
     .message-preview {
+      margin-top: 6px;
+    }
+    .message-user {
+      font-size: 13px;
+      color: var(--text-primary);
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+    .message-assistant {
       font-size: 11px;
       color: var(--text-muted);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      margin-top: 4px;
+      margin-top: 2px;
+      line-height: 1.4;
     }
-
-    .message-role { font-weight: 600; }
 
     /* empty states */
     .empty-state {
@@ -425,10 +477,10 @@
 
     /* agent-label — above session title */
     .agent-label {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--accent);
-      margin-bottom: 3px;
+      font-size: 22px;
+      font-weight: 600;
+      color: #e6edf3;
+      margin-bottom: 2px;
     }
 
     /* main content header (project name + count) */
@@ -632,7 +684,23 @@
       if (statTokenOut) statTokenOut.textContent = formatNumber(tokenSummary.totalOutput);
     }
 
-    function checkNotifications(data) {}
+    function checkNotifications(data) {
+      if (!data.transitions || !data.transitions.length) return;
+      if (Notification.permission !== 'granted') return;
+
+      for (const t of data.transitions) {
+        if (t.from === 'ACTIVE' && (t.to === 'RECENT' || t.to === 'IDLE') && !notifiedSessions.has(t.sessionId)) {
+          new Notification('OC Dashboard', {
+            body: `${t.title || 'Session'} completed`,
+            tag: t.sessionId,
+          });
+          notifiedSessions.add(t.sessionId);
+        }
+        if (t.to === 'ACTIVE') {
+          notifiedSessions.delete(t.sessionId);
+        }
+      }
+    }
 
     function relativeTime(ms) {
       if (!ms) return '';
@@ -660,6 +728,7 @@
           fetchSubAgents(session.id);
         }
       }
+      checkNotifications(data);
     }
 
     function renderProcesses(processes) {
@@ -690,7 +759,9 @@
           container.innerHTML = '<div class="empty-state">No sessions found</div>';
           return;
         }
-        container.innerHTML = allSessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id])).join('');
+        const projMap = {};
+        for (const p of projects) projMap[p.id] = p.displayName;
+        container.innerHTML = allSessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], projMap[s.projectId])).join('');
         return;
       }
 
@@ -717,22 +788,29 @@
       }).join('');
     }
 
-    function renderSessionCard(session, todos, msg) {
+    function renderSessionCard(session, todos, msgData, projectName) {
       const statusClass = session.status.toLowerCase();
-      const todoHtml = todos.length > 0 ? renderTodoProgress(todos) : '';
+      const progressHtml = renderCircularProgress(todos, session.status);
 
-      // 에이전트 라벨 (제목 위, agent-tag 대체)
-      const agentLabelHtml = (msg && msg.agent)
-        ? `<div class="agent-label">${escHtml(msg.agent)}</div>`
+      const lastMsg = msgData?.last;
+      const userMsg = msgData?.user;
+
+      const projectLabelHtml = projectName
+        ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${escHtml(projectName)}</div>`
         : '';
 
       let msgHtml = '';
-      if (msg) {
-        msgHtml = `<div class="message-preview"><span class="message-role">${escHtml(msg.role)}: </span>${escHtml(msg.textPreview || '')}</div>`;
-      } else if (msg === null) {
-        msgHtml = '<div class="message-preview">No messages yet</div>';
+      if (msgData) {
+        const userLine = userMsg?.textPreview
+          ? `<div class="message-user">${escHtml(userMsg.textPreview)}</div>`
+          : '';
+        const assistantLine = (lastMsg && lastMsg.role === 'assistant' && lastMsg.textPreview)
+          ? `<div class="message-assistant">${escHtml(lastMsg.textPreview)}</div>`
+          : '';
+        msgHtml = (userLine || assistantLine)
+          ? `<div class="message-preview">${userLine}${assistantLine}</div>`
+          : '<div class="message-preview"><div class="message-assistant">No messages yet</div></div>';
       }
-      // msg === undefined → IDLE session, data not fetched — show nothing
 
       const timeHtml = session.timeUpdated
         ? `<span style="color:var(--text-muted);font-size:11px;margin-right:8px">${relativeTime(session.timeUpdated)}</span>`
@@ -777,35 +855,67 @@
         }
       }
 
+      const cardClass = statusClass === 'active' ? 'card-active' : statusClass === 'recent' ? 'card-recent' : '';
+      const displayStatus = session.status === 'RECENT' ? 'COMPLETE' : session.status;
+
       return `
-        <div class="session-card">
-          ${agentLabelHtml}
-          <div class="session-header">
-            <span class="session-title">${escHtml(session.title)}</span>
-            <span style="display:flex;align-items:center">
-              ${timeHtml}
-              <span class="status-badge ${statusClass}">${escHtml(session.status)}</span>
-            </span>
+        <div class="session-card ${cardClass}">
+          <div class="session-card-layout">
+            <div class="session-card-content">
+              ${projectLabelHtml}
+              <span class="session-title">${escHtml(session.title)}</span>
+              <hr style="border:none;border-top:1px solid transparent;margin:6px 0">
+              ${msgHtml}
+              ${gitDiffHtml}
+              ${badgeHtml}
+              ${subAgentListHtml}
+            </div>
+            <div class="session-card-aside">
+              <div class="session-card-aside-top">
+                ${timeHtml}
+                <span class="status-badge ${statusClass}">${escHtml(displayStatus)}</span>
+              </div>
+              ${progressHtml}
+            </div>
           </div>
-          ${todoHtml}
-          ${gitDiffHtml}
-          ${msgHtml}
-          ${badgeHtml}
-          ${subAgentListHtml}
         </div>
       `;
     }
 
-    function renderTodoProgress(todos) {
-      const total = todos.length;
-      const done = todos.filter(t => t.status === 'completed').length;
-      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-      return `
-        <div class="todo-progress">
-          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-          <span class="progress-label">${done}/${total} tasks</span>
-        </div>
-      `;
+    function renderCircularProgress(todos, status) {
+      const hasActiveTodos = todos.some(t => t.status !== 'completed');
+      const r = 20;
+      const circ = 2 * Math.PI * r;
+      const size = 48;
+      const cx = size / 2;
+
+      if (hasActiveTodos) {
+        const total = todos.length;
+        const done = todos.filter(t => t.status === 'completed').length;
+        const offset = circ - (circ * done / total);
+        return `<div class="progress-ring-wrap">
+          <svg width="${size}" height="${size}" style="display:block">
+            <g class="progress-ring">
+              <circle class="progress-ring-bg" cx="${cx}" cy="${cx}" r="${r}" />
+              <circle class="progress-ring-fill" cx="${cx}" cy="${cx}" r="${r}"
+                stroke-dasharray="${circ}" stroke-dashoffset="${offset}" />
+            </g>
+            <text x="${cx}" y="${cx}" class="progress-ring-text">${done}/${total}</text>
+          </svg>
+        </div>`;
+      }
+
+      if (status === 'ACTIVE') {
+        return `<div class="progress-ring-wrap progress-spinner">
+          <svg width="${size}" height="${size}" style="display:block">
+            <circle class="progress-ring-bg" cx="${cx}" cy="${cx}" r="${r}" />
+            <circle class="progress-ring-fill" cx="${cx}" cy="${cx}" r="${r}"
+              stroke-dasharray="20 ${circ - 20}" stroke-dashoffset="0" />
+          </svg>
+        </div>`;
+      }
+
+      return '';
     }
 
     function renderSubAgentList(subAgents) {
@@ -869,7 +979,16 @@
       banner.style.display = 'block';
     }
 
-     // Notifications disabled
+    if (Notification.permission === 'default') {
+      document.getElementById('notif-banner').style.display = 'flex';
+    }
+    document.getElementById('notif-btn')?.addEventListener('click', () => {
+      Notification.requestPermission().then(p => {
+        if (p === 'granted') {
+          document.getElementById('notif-banner').style.display = 'none';
+        }
+      });
+    });
   </script>
 
 </body>
