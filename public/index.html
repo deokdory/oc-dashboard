@@ -773,6 +773,7 @@
     function checkNotifications(data) {
       if (!data.transitions || !data.transitions.length) return;
       if (Notification.permission !== 'granted') return;
+      if (document.visibilityState === 'visible') return;
 
       for (const t of data.transitions) {
         if (t.from === 'ACTIVE' && (t.to === 'RECENT' || t.to === 'IDLE') && !notifiedSessions.has(t.sessionId)) {
