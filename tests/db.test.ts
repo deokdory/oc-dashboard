@@ -7,7 +7,7 @@ import {
   getActiveSessions,
   batchGetSessionTodos,
   batchGetLastMessages,
-  getTokenSummary,
+  batchGetTokenSummary,
   getSubAgentCounts,
   getSubAgentSessions,
   getSessionTodos,
@@ -316,8 +316,8 @@ describe("getLastMessage", () => {
   });
 });
 
-describe("getTokenSummary", () => {
-  test("sums tokens from step-finish parts", () => {
+describe("batchGetTokenSummary", () => {
+  test("sums tokens per session from step-finish parts", () => {
     db.run("INSERT INTO message VALUES (?,?,?,?)", [
       "m1",
       "s1",
@@ -343,18 +343,17 @@ describe("getTokenSummary", () => {
       1001,
     ]);
 
-    const summary = getTokenSummary(["s1"]);
-    expect(summary.totalInput).toBe(300);
-    expect(summary.totalOutput).toBe(125);
+    const result = batchGetTokenSummary(["s1"]);
+    expect(result["s1"].totalInput).toBe(300);
+    expect(result["s1"].totalOutput).toBe(125);
   });
 
-  test("returns zeros for empty input", () => {
-    const summary = getTokenSummary([]);
-    expect(summary.totalInput).toBe(0);
-    expect(summary.totalOutput).toBe(0);
+  test("returns empty object for empty input", () => {
+    const result = batchGetTokenSummary([]);
+    expect(Object.keys(result).length).toBe(0);
   });
 
-  test("returns zeros when no step-finish parts exist", () => {
+  test("returns no entry when no step-finish parts exist", () => {
     db.run("INSERT INTO message VALUES (?,?,?,?)", [
       "m1",
       "s1",
@@ -368,9 +367,8 @@ describe("getTokenSummary", () => {
       1000,
     ]);
 
-    const summary = getTokenSummary(["s1"]);
-    expect(summary.totalInput).toBe(0);
-    expect(summary.totalOutput).toBe(0);
+    const result = batchGetTokenSummary(["s1"]);
+    expect(result["s1"]).toBeUndefined();
   });
 });
 

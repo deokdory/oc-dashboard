@@ -28,7 +28,7 @@
     body {
       display: grid;
       grid-template-columns: 240px 1fr;
-      grid-template-rows: auto auto 1fr auto;
+      grid-template-rows: auto 1fr auto;
       min-height: 100vh;
       background: var(--bg);
       color: var(--text);
@@ -52,7 +52,7 @@
 
     /* sidebar */
     .sidebar {
-      grid-row: 3;
+      grid-row: 2;
       grid-column: 1;
       overflow-y: auto;
       background: var(--card);
@@ -140,12 +140,9 @@
 
     /* summary-bar */
     .summary-bar {
-      grid-column: 1 / -1;
       display: flex;
-      gap: 12px;
-      padding: 12px 16px;
-      background: var(--bg);
-      border-bottom: 1px solid var(--card-border);
+      gap: 10px;
+      margin-bottom: 12px;
       flex-wrap: wrap;
     }
 
@@ -153,15 +150,16 @@
       background: var(--card);
       border: 1px solid var(--card-border);
       border-radius: 8px;
-      padding: 10px 16px;
-      min-width: 100px;
+      padding: 8px 14px;
+      flex: 1;
+      min-width: 80px;
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
 
     .stat-value {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
       color: var(--text);
       line-height: 1;
@@ -176,7 +174,7 @@
 
     /* main-content */
     .main-content {
-      grid-row: 3;
+      grid-row: 2;
       grid-column: 2;
       overflow-y: auto;
       overflow-x: hidden;
@@ -189,7 +187,7 @@
 
     /* process-panel */
     .process-panel {
-      grid-row: 4;
+      grid-row: 3;
       grid-column: 1 / -1;
       background: var(--card);
       border: 1px solid var(--card-border);
@@ -583,32 +581,9 @@
 <body>
 
   <header>
-    <h1 style="margin:0;font-size:16px;font-weight:600">⚡ OC Dashboard</h1>
+    <h1 style="margin:0;font-size:20px;font-weight:600">OC Dashboard</h1>
     <span id="conn-status" class="connection-status disconnected">● Disconnected</span>
   </header>
-
-  <section class="summary-bar" id="summary-panel">
-    <div class="stat-card">
-      <span class="stat-value" id="stat-active">—</span>
-      <span class="stat-label">Active</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-value" id="stat-recent">—</span>
-      <span class="stat-label">Recent</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-value" id="stat-idle">—</span>
-      <span class="stat-label">Idle</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-value" id="stat-token-in">—</span>
-      <span class="stat-label">↑ Input Tokens</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-value" id="stat-token-out">—</span>
-      <span class="stat-label">↓ Output Tokens</span>
-    </div>
-  </section>
 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-section-label">Projects</div>
@@ -625,6 +600,7 @@
       <button id="notif-btn">Enable</button>
     </div>
     <div id="error-banner" style="display:none; padding:8px 16px; background:#2d1b1b; color:#f85149; border-radius:8px; margin-bottom:12px; font-size:13px;"></div>
+    <div class="summary-bar" id="summary-panel"></div>
     <div class="project-list" id="projects-container">
       <div class="empty-state">Loading...</div>
     </div>
@@ -664,6 +640,7 @@
 
     // 알림 권한 + 중복 방지
     const notifiedSessions = new Set();
+    const activeNotifications = new Map();
     const expandedSubAgents = new Set(); // sessionId — expanded sub-agent list
     const subAgentCache = new Map();     // sessionId -> SubAgentSession[]
     let lastData = null; // 최신 SSE 데이터 보관 (toggleSubAgents에서 즉시 재렌더용)
@@ -749,24 +726,48 @@
     }
 
     function renderSummaryPanel(data) {
-      const sessions = data.sessions || [];
-      const tokenSummary = data.tokenSummary || { totalInput: 0, totalOutput: 0 };
+      const panel = document.getElementById('summary-panel');
+      if (!panel) return;
 
-      const activeCount = sessions.filter(s => s.status === 'ACTIVE').length;
-      const recentCount = sessions.filter(s => s.status === 'RECENT').length;
-      const idleCount = sessions.filter(s => s.status === 'IDLE').length;
+      const allSessions = data.sessions || [];
+      const sessionTokens = data.sessionTokens || {};
 
-      const statActive = document.getElementById('stat-active');
-      const statRecent = document.getElementById('stat-recent');
-      const statIdle = document.getElementById('stat-idle');
-      const statTokenIn = document.getElementById('stat-token-in');
-      const statTokenOut = document.getElementById('stat-token-out');
+      const filtered = selectedProjectId === 'all'
+        ? allSessions
+        : allSessions.filter(s => s.projectId === selectedProjectId);
 
-      if (statActive) statActive.textContent = String(activeCount);
-      if (statRecent) statRecent.textContent = String(recentCount);
-      if (statIdle) statIdle.textContent = String(idleCount);
-      if (statTokenIn) statTokenIn.textContent = formatNumber(tokenSummary.totalInput);
-      if (statTokenOut) statTokenOut.textContent = formatNumber(tokenSummary.totalOutput);
+      const activeCount = filtered.filter(s => s.status === 'ACTIVE').length;
+      const recentCount = filtered.filter(s => s.status === 'RECENT').length;
+      const idleCount = filtered.filter(s => s.status === 'IDLE').length;
+
+      let totalInput = 0, totalOutput = 0;
+      for (const s of filtered) {
+        const t = sessionTokens[s.id];
+        if (t) { totalInput += t.totalInput; totalOutput += t.totalOutput; }
+      }
+
+      panel.innerHTML = `
+        <div class="stat-card">
+          <span class="stat-value"${activeCount > 0 ? ' style="color:var(--active)"' : ''}>${activeCount}</span>
+          <span class="stat-label">Active</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value"${recentCount > 0 ? ' style="color:var(--recent)"' : ''}>${recentCount}</span>
+          <span class="stat-label">Complete</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">${idleCount}</span>
+          <span class="stat-label">Idle</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">${formatNumber(totalInput)}</span>
+          <span class="stat-label">↑ Input</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">${formatNumber(totalOutput)}</span>
+          <span class="stat-label">↓ Output</span>
+        </div>
+      `;
     }
 
     function checkNotifications(data) {
@@ -781,6 +782,8 @@
           });
           const sid = t.sessionId;
           notif.onclick = () => { dismissSession(sid); window.focus(); };
+          notif.onclose = () => { activeNotifications.delete(sid); };
+          activeNotifications.set(sid, notif);
           notifiedSessions.add(t.sessionId);
         }
         if (t.to === 'ACTIVE') {
@@ -840,6 +843,7 @@
       const archived = data.archivedSessions || [];
       const todos = data.todos || {};
       const messages = data.messages || {};
+      const tokens = data.sessionTokens || {};
 
       const projMap = {};
       for (const p of projects) projMap[p.id] = p.displayName;
@@ -860,9 +864,9 @@
           return;
         }
 
-        const activeHtml = sorted.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], projMap[s.projectId])).join('');
+        const activeHtml = sorted.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], projMap[s.projectId], false, tokens[s.id])).join('');
         const archivedHtml = showArchivedSessions
-          ? archivedSorted.map(s => renderSessionCard(s, [], null, projMap[s.projectId], true)).join('')
+          ? archivedSorted.map(s => renderSessionCard(s, [], null, projMap[s.projectId], true, tokens[s.id])).join('')
           : '';
 
         container.innerHTML = activeHtml + renderArchiveToggle(archivedSorted.length) + archivedHtml;
@@ -886,7 +890,7 @@
           const total = projArchived.length;
           const archivedHtml = total === 0
             ? '<div class="empty-state">No sessions</div>'
-            : projArchived.map(s => renderSessionCard(s, [], null, null, true)).join('');
+            : projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id])).join('');
           return `
             <div class="main-header">
               <span class="main-title">${escHtml(proj.displayName)}</span>
@@ -899,9 +903,9 @@
         const sessionCount = projSessions.length;
         const sessionHtml = sessionCount === 0
           ? '<div class="empty-state">No active sessions</div>'
-          : projSessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id])).join('');
+          : projSessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], null, false, tokens[s.id])).join('');
         const archivedHtml = showArchivedSessions
-          ? projArchived.map(s => renderSessionCard(s, [], null, null, true)).join('')
+          ? projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id])).join('')
           : '';
         return `
           <div class="main-header">
@@ -922,9 +926,11 @@
 
     function dismissSession(sessionId) {
       fetch(`/sessions/${sessionId}/dismiss`, { method: 'POST' }).catch(() => {});
+      const notif = activeNotifications.get(sessionId);
+      if (notif) { notif.close(); activeNotifications.delete(sessionId); }
     }
 
-    function renderSessionCard(session, todos, msgData, projectName, isArchived = false) {
+    function renderSessionCard(session, todos, msgData, projectName, isArchived = false, tokenData = null) {
       const statusClass = session.status.toLowerCase();
       const progressHtml = renderCircularProgress(todos, session.status);
 
@@ -1009,7 +1015,7 @@
             </div>
             <div class="session-card-aside">
               <div class="session-card-aside-top">
-                ${timeHtml}
+                ${tokenData ? `<span style="color:var(--text-muted);font-size:11px">↑${formatNumber(tokenData.totalInput)}&emsp;↓${formatNumber(tokenData.totalOutput)}</span><span style="color:var(--card-border);font-size:11px;margin:0 4px">|</span>` : ''}${timeHtml}
                 <span class="status-badge ${statusClass}">${escHtml(displayStatus)}</span>
               </div>
               ${progressHtml}

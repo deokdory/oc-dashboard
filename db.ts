@@ -300,37 +300,43 @@ export function getSubAgentSessions(parentId: string): SubAgentSession[] {
   }
 }
 
-export function getTokenSummary(sessionIds: string[]): TokenSummary {
-  if (sessionIds.length === 0) return { totalInput: 0, totalOutput: 0 };
+export function batchGetTokenSummary(
+  sessionIds: string[],
+): Record<string, TokenSummary> {
+  if (sessionIds.length === 0) return {};
   try {
     const db = openDb();
     try {
       const placeholders = sessionIds.map(() => "?").join(",");
-      const row = db
+      const rows = db
         .query<
-          { totalInput: number | null; totalOutput: number | null },
+          { session_id: string; totalInput: number; totalOutput: number },
           string[]
         >(
-          `SELECT
-             COALESCE(SUM(json_extract(data, '$.tokens.input')), 0) as totalInput,
-             COALESCE(SUM(json_extract(data, '$.tokens.output')), 0) as totalOutput
-           FROM part
-           WHERE message_id IN (
-             SELECT id FROM message WHERE session_id IN (${placeholders})
-           )
-             AND json_extract(data, '$.type') = 'step-finish'`,
+          `SELECT m.session_id,
+             COALESCE(SUM(json_extract(p.data, '$.tokens.input')), 0) as totalInput,
+             COALESCE(SUM(json_extract(p.data, '$.tokens.output')), 0) as totalOutput
+           FROM part p
+           JOIN message m ON p.message_id = m.id
+           WHERE m.session_id IN (${placeholders})
+             AND json_extract(p.data, '$.type') = 'step-finish'
+           GROUP BY m.session_id`,
         )
-        .get(...sessionIds);
-      return {
-        totalInput: row?.totalInput ?? 0,
-        totalOutput: row?.totalOutput ?? 0,
-      };
+        .all(...sessionIds);
+      const result: Record<string, TokenSummary> = {};
+      for (const r of rows) {
+        result[r.session_id] = {
+          totalInput: r.totalInput,
+          totalOutput: r.totalOutput,
+        };
+      }
+      return result;
     } finally {
       db.close();
     }
   } catch (err) {
-    console.warn("[db] getTokenSummary error:", err);
-    return { totalInput: 0, totalOutput: 0 };
+    console.warn("[db] batchGetTokenSummary error:", err);
+    return {};
   }
 }
 

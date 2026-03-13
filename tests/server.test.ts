@@ -74,13 +74,12 @@ describe("server endpoints", () => {
     expect(parsed).toHaveProperty("sessions");
     expect(parsed).toHaveProperty("todos");
     expect(parsed).toHaveProperty("messages");
-    expect(parsed).toHaveProperty("tokenSummary");
+    expect(parsed).toHaveProperty("sessionTokens");
     expect(parsed).toHaveProperty("processes");
     expect(parsed).toHaveProperty("timestamp");
     expect(Array.isArray(parsed.projects)).toBe(true);
     expect(Array.isArray(parsed.sessions)).toBe(true);
-    expect(typeof parsed.tokenSummary.totalInput).toBe("number");
-    expect(typeof parsed.tokenSummary.totalOutput).toBe("number");
+    expect(typeof parsed.sessionTokens).toBe("object");
   }, 10000);
 
   test("REST /sessions/:id/subagents returns JSON array", async () => {

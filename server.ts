@@ -5,7 +5,7 @@ import {
   batchGetLastMessages,
   getSubAgentCounts,
   getSubAgentSessions,
-  getTokenSummary,
+  batchGetTokenSummary,
 } from "./db";
 import type { Project, Session, Todo, MessagePreview, SessionMessages, SubAgentSession, TokenSummary } from "./db";
 import { getOpenCodeProcesses, type OcProcess } from "./process";
@@ -51,7 +51,7 @@ interface DashboardState {
   messages: Record<string, SessionMessages>;
   processes: OcProcess[];
   transitions: Transition[];
-  tokenSummary: TokenSummary;
+  sessionTokens: Record<string, TokenSummary>;
   timestamp: number;
 }
 
@@ -93,7 +93,7 @@ async function buildState(): Promise<DashboardState | { error: string }> {
 
     const sessionIds = rawSessions.map(s => s.id);
     const subAgentCounts = getSubAgentCounts(sessionIds);
-    const tokenSummary = getTokenSummary(sessionIds);
+    const sessionTokens = batchGetTokenSummary(sessionIds);
 
     const processes = await getOpenCodeProcesses();
     const pluginResult = await readPluginActiveSessions();
@@ -169,7 +169,7 @@ async function buildState(): Promise<DashboardState | { error: string }> {
       messages,
       processes,
       transitions,
-      tokenSummary,
+      sessionTokens,
       timestamp: Date.now(),
     };
   } catch (err) {
