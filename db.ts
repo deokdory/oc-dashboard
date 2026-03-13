@@ -411,6 +411,67 @@ export function batchGetPendingQuestions(
   }
 }
 
+export function batchGetPendingBackgroundTasks(
+  sessionIds: string[],
+): Set<string> {
+  if (sessionIds.length === 0) return new Set();
+  try {
+    const db = openDb();
+    try {
+      const placeholders = sessionIds.map(() => "?").join(",");
+      const rows = db
+        .query<{ session_id: string }, string[]>(
+          `WITH launched AS (
+             SELECT p.session_id,
+               substr(json_extract(p.data, '$.state.output'),
+                 instr(json_extract(p.data, '$.state.output'), 'background_task_id: ') + 20,
+                 11) as bg_id
+             FROM part p
+             WHERE p.session_id IN (${placeholders})
+               AND json_extract(p.data, '$.tool') = 'task'
+               AND json_extract(p.data, '$.state.output') LIKE '%background_task_id:%'
+           ),
+           collected AS (
+             SELECT p.session_id,
+               json_extract(p.data, '$.state.input.task_id') as bg_id
+             FROM part p
+             WHERE p.session_id IN (${placeholders})
+               AND json_extract(p.data, '$.tool') = 'background_output'
+             UNION ALL
+             SELECT p.session_id,
+               COALESCE(
+                 json_extract(p.data, '$.state.input.taskId'),
+                 json_extract(p.data, '$.state.input.task_id')
+               ) as bg_id
+             FROM part p
+             WHERE p.session_id IN (${placeholders})
+               AND json_extract(p.data, '$.tool') = 'background_cancel'
+               AND json_extract(p.data, '$.state.input.all') IS NOT 1
+           ),
+           cancel_all AS (
+             SELECT DISTINCT p.session_id
+             FROM part p
+             WHERE p.session_id IN (${placeholders})
+               AND json_extract(p.data, '$.tool') = 'background_cancel'
+               AND json_extract(p.data, '$.state.input.all') = 1
+           )
+           SELECT DISTINCT l.session_id
+           FROM launched l
+           LEFT JOIN collected c ON l.session_id = c.session_id AND l.bg_id = c.bg_id
+           LEFT JOIN cancel_all ca ON l.session_id = ca.session_id
+           WHERE c.bg_id IS NULL AND ca.session_id IS NULL`,
+        )
+        .all(...sessionIds, ...sessionIds, ...sessionIds, ...sessionIds);
+      return new Set(rows.map((r) => r.session_id));
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    console.warn("[db] batchGetPendingBackgroundTasks error:", err);
+    return new Set();
+  }
+}
+
 export function getSessionTodos(sessionId: string): Todo[] {
   try {
     const db = openDb();

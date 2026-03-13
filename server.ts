@@ -8,6 +8,7 @@ import {
   batchGetTokenSummary,
   batchGetSessionAgents,
   batchGetPendingQuestions,
+  batchGetPendingBackgroundTasks,
 } from "./db";
 import type { Project, Session, Todo, MessagePreview, SessionMessages, SubAgentSession, TokenSummary } from "./db";
 import { getOpenCodeProcesses, type OcProcess } from "./process";
@@ -56,6 +57,7 @@ interface DashboardState {
   sessionTokens: Record<string, TokenSummary>;
   sessionAgents: Record<string, string>;
   waitingSessions: string[];
+  delegatingSessions: string[];
   timestamp: number;
 }
 
@@ -169,6 +171,10 @@ async function buildState(): Promise<DashboardState | { error: string }> {
     const pendingQuestions = batchGetPendingQuestions(activeIds);
     const waitingSessions = [...pendingQuestions];
 
+    const nonActiveIds = sessions.filter(s => s.status !== "ACTIVE").map(s => s.id);
+    const pendingBgTasks = batchGetPendingBackgroundTasks([...activeIds, ...nonActiveIds]);
+    const delegatingSessions = [...pendingBgTasks];
+
     const transitions = detectTransitions(sessions);
 
     return {
@@ -183,6 +189,7 @@ async function buildState(): Promise<DashboardState | { error: string }> {
       sessionTokens,
       sessionAgents,
       waitingSessions,
+      delegatingSessions,
       timestamp: Date.now(),
     };
   } catch (err) {
@@ -338,6 +345,7 @@ function buildDemoState(): DashboardState {
     sessionTokens,
     sessionAgents,
     waitingSessions: [],
+    delegatingSessions: ["ses-demo-3"],
     timestamp: now,
   };
 }
