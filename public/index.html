@@ -845,6 +845,7 @@
       const todos = data.todos || {};
       const messages = data.messages || {};
       const tokens = data.sessionTokens || {};
+      const agents = data.sessionAgents || {};
 
       const projMap = {};
       for (const p of projects) projMap[p.id] = p.displayName;
@@ -865,9 +866,9 @@
           return;
         }
 
-        const activeHtml = sorted.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], projMap[s.projectId], false, tokens[s.id])).join('');
+        const activeHtml = sorted.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], projMap[s.projectId], false, tokens[s.id], agents[s.id])).join('');
         const archivedHtml = showArchivedSessions
-          ? archivedSorted.map(s => renderSessionCard(s, [], null, projMap[s.projectId], true, tokens[s.id])).join('')
+          ? archivedSorted.map(s => renderSessionCard(s, [], null, projMap[s.projectId], true, tokens[s.id], agents[s.id])).join('')
           : '';
 
         container.innerHTML = activeHtml + renderArchiveToggle(archivedSorted.length) + archivedHtml;
@@ -891,7 +892,7 @@
           const total = projArchived.length;
           const archivedHtml = total === 0
             ? '<div class="empty-state">No sessions</div>'
-            : projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id])).join('');
+            : projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id], agents[s.id])).join('');
           return `
             <div class="main-header">
               <span class="main-title">${escHtml(proj.displayName)}</span>
@@ -904,9 +905,9 @@
         const sessionCount = projSessions.length;
         const sessionHtml = sessionCount === 0
           ? '<div class="empty-state">No active sessions</div>'
-          : projSessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], null, false, tokens[s.id])).join('');
+          : projSessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], null, false, tokens[s.id], agents[s.id])).join('');
         const archivedHtml = showArchivedSessions
-          ? projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id])).join('')
+          ? projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id], agents[s.id])).join('')
           : '';
         return `
           <div class="main-header">
@@ -931,7 +932,7 @@
       if (notif) { notif.close(); activeNotifications.delete(sessionId); }
     }
 
-    function renderSessionCard(session, todos, msgData, projectName, isArchived = false, tokenData = null) {
+    function renderSessionCard(session, todos, msgData, projectName, isArchived = false, tokenData = null, agentName = null) {
       const statusClass = session.status.toLowerCase();
       const progressHtml = renderCircularProgress(todos, session.status);
 
@@ -940,6 +941,10 @@
 
       const projectLabelHtml = projectName
         ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${escHtml(projectName)}</div>`
+        : '';
+
+      const agentHtml = agentName
+        ? `<div style="font-size:12px;color:var(--text-primary);margin-top:8px;margin-bottom:2px">${escHtml(agentName)}</div>`
         : '';
 
       let msgHtml = '';
@@ -1007,8 +1012,8 @@
           <div class="session-card-layout">
             <div class="session-card-content">
               ${projectLabelHtml}
-              <span class="session-title">${escHtml(session.title)}</span>
-              <hr style="border:none;border-top:1px solid transparent;margin:6px 0">
+              ${agentHtml}<span class="session-title">${escHtml(session.title)}</span>
+              <hr style="border:none;border-top:1px solid transparent;margin:4px 0">
               ${msgHtml}
               ${gitDiffHtml}
               ${badgeHtml}

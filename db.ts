@@ -340,6 +340,44 @@ export function batchGetTokenSummary(
   }
 }
 
+export function batchGetSessionAgents(
+  sessionIds: string[],
+): Record<string, string> {
+  if (sessionIds.length === 0) return {};
+  try {
+    const db = openDb();
+    try {
+      const placeholders = sessionIds.map(() => "?").join(",");
+      const rows = db
+        .query<
+          { session_id: string; agent: string },
+          string[]
+        >(
+          `SELECT m.session_id, json_extract(m.data, '$.agent') as agent
+           FROM message m
+           WHERE m.session_id IN (${placeholders})
+             AND m.time_created = (
+               SELECT MAX(m2.time_created)
+               FROM message m2
+               WHERE m2.session_id = m.session_id
+             )
+             AND agent IS NOT NULL`,
+        )
+        .all(...sessionIds);
+      const result: Record<string, string> = {};
+      for (const r of rows) {
+        result[r.session_id] = r.agent;
+      }
+      return result;
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    console.warn("[db] batchGetSessionAgents error:", err);
+    return {};
+  }
+}
+
 export function getSessionTodos(sessionId: string): Todo[] {
   try {
     const db = openDb();
