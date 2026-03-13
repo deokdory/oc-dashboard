@@ -183,6 +183,157 @@ async function buildState(): Promise<DashboardState | { error: string }> {
   }
 }
 
+const DEMO_MODE = Bun.env.DEMO === "true";
+
+function buildDemoState(): DashboardState {
+  const now = Date.now();
+
+  const projects: Project[] = [
+    { id: "proj-web", worktree: "/home/dev/web-app", displayName: "web-app" },
+    { id: "proj-api", worktree: "/home/dev/api-server", displayName: "api-server" },
+    { id: "proj-cli", worktree: "/home/dev/cli-tool", displayName: "cli-tool" },
+    { id: "proj-docs", worktree: "/home/dev/docs", displayName: "docs" },
+  ];
+
+  const sessions: SessionWithCounts[] = [
+    {
+      id: "ses-demo-1", projectId: "proj-web", title: "Implement OAuth2 login flow",
+      directory: "/home/dev/web-app", timeUpdated: now - 3000, status: "ACTIVE",
+      summaryAdditions: 247, summaryDeletions: 38, summaryFiles: 12,
+      subAgentCount: 2, activeSubAgentCount: 2,
+    },
+    {
+      id: "ses-demo-2", projectId: "proj-web", title: "Fix responsive layout on mobile",
+      directory: "/home/dev/web-app", timeUpdated: now - 5000, status: "ACTIVE",
+      summaryAdditions: 89, summaryDeletions: 23, summaryFiles: 5,
+      subAgentCount: 0, activeSubAgentCount: 0,
+    },
+    {
+      id: "ses-demo-3", projectId: "proj-api", title: "Add rate limiting middleware",
+      directory: "/home/dev/api-server", timeUpdated: now - 120000, status: "RECENT",
+      summaryAdditions: 156, summaryDeletions: 12, summaryFiles: 8,
+      subAgentCount: 0, activeSubAgentCount: 0,
+    },
+    {
+      id: "ses-demo-4", projectId: "proj-api", title: "Database migration v2.3",
+      directory: "/home/dev/api-server", timeUpdated: now - 7200000, status: "IDLE",
+      summaryAdditions: 420, summaryDeletions: 195, summaryFiles: 15,
+      subAgentCount: 0, activeSubAgentCount: 0,
+    },
+    {
+      id: "ses-demo-5", projectId: "proj-cli", title: "Add --json output flag",
+      directory: "/home/dev/cli-tool", timeUpdated: now - 4000, status: "ACTIVE",
+      summaryAdditions: 63, summaryDeletions: 8, summaryFiles: 3,
+      subAgentCount: 1, activeSubAgentCount: 1,
+    },
+    {
+      id: "ses-demo-6", projectId: "proj-web", title: "Refactor state management",
+      directory: "/home/dev/web-app", timeUpdated: now - 180000, status: "RECENT",
+      summaryAdditions: 312, summaryDeletions: 287, summaryFiles: 22,
+      subAgentCount: 0, activeSubAgentCount: 0,
+    },
+  ];
+
+  const archivedSessions: SessionWithCounts[] = [
+    {
+      id: "ses-demo-old-1", projectId: "proj-docs", title: "Update API reference docs",
+      directory: "/home/dev/docs", timeUpdated: now - 5 * 86400000, status: "IDLE",
+      summaryAdditions: 89, summaryDeletions: 14, summaryFiles: 4,
+      subAgentCount: 0, activeSubAgentCount: 0,
+    },
+    {
+      id: "ses-demo-old-2", projectId: "proj-docs", title: "Add getting started guide",
+      directory: "/home/dev/docs", timeUpdated: now - 7 * 86400000, status: "IDLE",
+      summaryAdditions: 210, summaryDeletions: 0, summaryFiles: 6,
+      subAgentCount: 0, activeSubAgentCount: 0,
+    },
+  ];
+
+  const todos: Record<string, Todo[]> = {
+    "ses-demo-1": [
+      { sessionId: "ses-demo-1", content: "Implement Google OAuth provider", status: "completed", priority: "high", position: 0 },
+      { sessionId: "ses-demo-1", content: "Add token refresh logic", status: "completed", priority: "high", position: 1 },
+      { sessionId: "ses-demo-1", content: "Create login callback handler", status: "in_progress", priority: "high", position: 2 },
+      { sessionId: "ses-demo-1", content: "Add session persistence", status: "pending", priority: "medium", position: 3 },
+      { sessionId: "ses-demo-1", content: "Write integration tests", status: "pending", priority: "medium", position: 4 },
+    ],
+    "ses-demo-2": [
+      { sessionId: "ses-demo-2", content: "Fix sidebar collapse on tablet", status: "completed", priority: "high", position: 0 },
+      { sessionId: "ses-demo-2", content: "Adjust grid breakpoints", status: "in_progress", priority: "medium", position: 1 },
+    ],
+    "ses-demo-5": [
+      { sessionId: "ses-demo-5", content: "Parse --json flag from args", status: "completed", priority: "high", position: 0 },
+      { sessionId: "ses-demo-5", content: "Format output as JSON", status: "completed", priority: "high", position: 1 },
+      { sessionId: "ses-demo-5", content: "Update help text", status: "in_progress", priority: "low", position: 2 },
+    ],
+  };
+
+  const messages: Record<string, SessionMessages> = {
+    "ses-demo-1": {
+      last: { role: "assistant", agent: "Sisyphus", textPreview: "OAuth callback handler implemented. Now adding PKCE verification for the authorization code flow...", timeCreated: now - 3000 },
+      user: { role: "user", agent: null, textPreview: "Implement Google OAuth2 login with PKCE flow", timeCreated: now - 60000 },
+    },
+    "ses-demo-2": {
+      last: { role: "assistant", agent: "Sisyphus", textPreview: "Fixed the sidebar z-index issue. Adjusting grid breakpoints for 768px viewport...", timeCreated: now - 5000 },
+      user: { role: "user", agent: null, textPreview: "The sidebar overlaps content on iPad. Fix the responsive layout", timeCreated: now - 30000 },
+    },
+    "ses-demo-3": {
+      last: { role: "assistant", agent: "Sisyphus", textPreview: "Rate limiting middleware complete. Added sliding window algorithm with Redis backend, 100 req/min default.", timeCreated: now - 120000 },
+      user: { role: "user", agent: null, textPreview: "Add rate limiting to all API endpoints", timeCreated: now - 300000 },
+    },
+    "ses-demo-5": {
+      last: { role: "assistant", agent: "Sisyphus", textPreview: "JSON output flag working. Updating --help text to document the new option...", timeCreated: now - 4000 },
+      user: { role: "user", agent: null, textPreview: "Add a --json flag for machine-readable output", timeCreated: now - 20000 },
+    },
+    "ses-demo-6": {
+      last: { role: "assistant", agent: "Sisyphus", textPreview: "Refactoring complete. Migrated 22 files from Redux to Zustand. All tests passing.", timeCreated: now - 180000 },
+      user: { role: "user", agent: null, textPreview: "Migrate state management from Redux to Zustand", timeCreated: now - 600000 },
+    },
+  };
+
+  const sessionTokens: Record<string, TokenSummary> = {
+    "ses-demo-1": { totalInput: 284500, totalOutput: 12300 },
+    "ses-demo-2": { totalInput: 95200, totalOutput: 4800 },
+    "ses-demo-3": { totalInput: 187600, totalOutput: 8900 },
+    "ses-demo-4": { totalInput: 523000, totalOutput: 31200 },
+    "ses-demo-5": { totalInput: 67400, totalOutput: 3100 },
+    "ses-demo-6": { totalInput: 412800, totalOutput: 19500 },
+    "ses-demo-old-1": { totalInput: 45000, totalOutput: 2100 },
+    "ses-demo-old-2": { totalInput: 78000, totalOutput: 5600 },
+  };
+
+  const sessionAgents: Record<string, string> = {
+    "ses-demo-1": "Sisyphus (Ultraworker)",
+    "ses-demo-2": "Sisyphus (Ultraworker)",
+    "ses-demo-3": "Sisyphus (Ultraworker)",
+    "ses-demo-4": "Atlas (Plan Executor)",
+    "ses-demo-5": "Sisyphus (Ultraworker)",
+    "ses-demo-6": "Sisyphus (Ultraworker)",
+    "ses-demo-old-1": "herald",
+    "ses-demo-old-2": "Sisyphus (Ultraworker)",
+  };
+
+  const processes: OcProcess[] = [
+    { pid: 42150, cpu: "8.2", mem: "1.8", elapsed: "12:34.56", cwd: "/home/dev/web-app" },
+    { pid: 42283, cpu: "5.1", mem: "1.4", elapsed: "08:12.03", cwd: "/home/dev/api-server" },
+    { pid: 42401, cpu: "11.7", mem: "2.1", elapsed: "03:45.21", cwd: "/home/dev/cli-tool" },
+  ];
+
+  return {
+    projects,
+    archivedProjectIds: ["proj-docs"],
+    sessions,
+    archivedSessions,
+    todos,
+    messages,
+    processes,
+    transitions: [],
+    sessionTokens,
+    sessionAgents,
+    timestamp: now,
+  };
+}
+
 type Controller = ReadableStreamDefaultController<Uint8Array>;
 const clients = new Set<Controller>();
 const encoder = new TextEncoder();
@@ -201,7 +352,7 @@ function broadcast(state: DashboardState | { error: string }): void {
 
 setInterval(async () => {
   if (clients.size === 0) return;
-  const state = await buildState();
+  const state = DEMO_MODE ? buildDemoState() : await buildState();
   broadcast(state);
 }, 2_000);
 
@@ -220,7 +371,7 @@ Bun.serve({
           clientController = controller;
           clients.add(controller);
 
-          const state = await buildState();
+          const state = DEMO_MODE ? buildDemoState() : await buildState();
           try {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(state)}\n\n`));
           } catch {
@@ -253,7 +404,7 @@ Bun.serve({
     ) {
       const sessionId = sessionPathParts[1];
       dismissedSessions.add(sessionId);
-      const state = await buildState();
+      const state = DEMO_MODE ? buildDemoState() : await buildState();
       broadcast(state);
       return new Response(JSON.stringify({ ok: true }), {
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
@@ -283,4 +434,4 @@ Bun.serve({
   },
 });
 
-console.log(`OC Dashboard running at http://localhost:${PORT}`);
+console.log(`OC Dashboard running at http://localhost:${PORT}${DEMO_MODE ? " (DEMO MODE)" : ""}`);

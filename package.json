@@ -1,5 +1,9 @@
 {
   "name": "oc-dashboard",
+  "description": "Real-time OpenCode session monitoring dashboard",
+  "version": "1.0.0",
+  "author": "Jaemin Sim (deokdory)",
+  "license": "MIT",
   "scripts": {
     "test": "bun test",
     "start": "bun run server.ts"
