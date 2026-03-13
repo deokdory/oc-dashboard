@@ -13,7 +13,9 @@
 
 여러 프로젝트에서 동시에 OpenCode 세션을 돌릴 때, 각 세션의 상태(ACTIVE / COMPLETE / IDLE), 진행률, 토큰 사용량, 에이전트 정보 등을 한 눈에 파악하기 위해 만들었습니다.
 
-> 이 프로젝트의 모든 코드는 [OpenCode](https://opencode.ai) + [OhMyOpenCode](https://github.com/jaemin-bang/ohmyopencode)로 구현되었습니다.
+> 이 프로젝트의 모든 코드는 [OpenCode](https://opencode.ai) + [Oh My Open Agent](https://github.com/code-yeongyu/oh-my-openagent)로 구현되었습니다.
+
+> **Note**: 현재 macOS만 지원합니다. 프로세스 감지(`lsof`)가 macOS 전용입니다.
 
 ## Features
 
@@ -31,7 +33,7 @@
 
 ## Quick Start
 
-**Prerequisites**: [Bun](https://bun.sh) v1.0+ · [OpenCode](https://opencode.ai)
+**Prerequisites**: macOS · [Bun](https://bun.sh) v1.0+ · [OpenCode](https://opencode.ai)
 
 ```bash
 # 1. Clone
@@ -60,7 +62,7 @@ bun run server.ts
 같은 네트워크의 태블릿/폰에서 접속 가능합니다.
 
 ```bash
-ipconfig getifaddr en0   # LAN IP 확인
+ipconfig getifaddr en0   # macOS LAN IP 확인
 ```
 
 `http://<LAN_IP>:3333` 접속.
