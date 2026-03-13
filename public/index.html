@@ -148,10 +148,15 @@
 
     /* summary-bar */
     .summary-bar {
-      display: flex;
-      gap: 10px;
+      display: grid;
+      gap: 8px;
       margin-bottom: 12px;
-      flex-wrap: wrap;
+    }
+
+    .summary-row {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
     }
 
     .stat-card {
@@ -159,8 +164,6 @@
       border: 1px solid var(--card-border);
       border-radius: 8px;
       padding: 8px 14px;
-      flex: 1;
-      min-width: 80px;
       display: flex;
       flex-direction: column;
       gap: 2px;
@@ -794,34 +797,30 @@
         if (t) { totalInput += t.totalInput; totalOutput += t.totalOutput; }
       }
 
+      const statusCards = [
+        { value: activeCount, label: 'Active', color: activeCount > 0 ? 'var(--active)' : '', always: true },
+        { value: waitingCount, label: 'Waiting', color: '#f0a030', always: false },
+        { value: delegatingCount, label: 'Delegating', color: '#b48eff', always: false },
+        { value: recentCount, label: 'Complete', color: recentCount > 0 ? 'var(--recent)' : '', always: true },
+        { value: idleCount, label: 'Idle', color: '', always: true },
+      ].filter(c => c.always || c.value > 0);
+
       panel.innerHTML = `
-        <div class="stat-card">
-          <span class="stat-value"${activeCount > 0 ? ' style="color:var(--active)"' : ''}>${activeCount}</span>
-          <span class="stat-label">Active</span>
+        <div class="summary-row">
+          ${statusCards.map(c => `<div class="stat-card">
+            <span class="stat-value"${c.color ? ` style="color:${c.color}"` : ''}>${c.value}</span>
+            <span class="stat-label">${c.label}</span>
+          </div>`).join('')}
         </div>
-        <div class="stat-card">
-          <span class="stat-value"${waitingCount > 0 ? ' style="color:#f0a030"' : ''}>${waitingCount}</span>
-          <span class="stat-label">Waiting</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value"${delegatingCount > 0 ? ' style="color:#b48eff"' : ''}>${delegatingCount}</span>
-          <span class="stat-label">Delegating</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value"${recentCount > 0 ? ' style="color:var(--recent)"' : ''}>${recentCount}</span>
-          <span class="stat-label">Complete</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value">${idleCount}</span>
-          <span class="stat-label">Idle</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value">${formatNumber(totalInput)}</span>
-          <span class="stat-label">↑ Input</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value">${formatNumber(totalOutput)}</span>
-          <span class="stat-label">↓ Output</span>
+        <div class="summary-row">
+          <div class="stat-card">
+            <span class="stat-value">${formatNumber(totalInput)}</span>
+            <span class="stat-label">↑ Input</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">${formatNumber(totalOutput)}</span>
+            <span class="stat-label">↓ Output</span>
+          </div>
         </div>
       `;
     }
