@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshot.png" alt="OC Dashboard" width="720" />
+  <img src="assets/screenshot.jpeg" alt="OC Dashboard" width="720" />
 </p>
 
 ---
