@@ -2,7 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { chromium, type Browser, type Page } from "playwright";
 
 const BASE_URL = "http://localhost:3333";
-const EVIDENCE_DIR = "/Users/jaemin/.sisyphus/evidence";
+const EVIDENCE_DIR = process.env.EVIDENCE_DIR || "./test-evidence";
 
 const serverAvailable = await fetch(BASE_URL, {
   signal: AbortSignal.timeout(1000),
