@@ -634,7 +634,7 @@
         if (data.error) { showError(data.error); return; }
         render(data);
       } catch (err) {
-        showError('Failed to parse server data');
+        console.warn('[SSE] parse error, skipping frame:', err);
       }
     };
 
