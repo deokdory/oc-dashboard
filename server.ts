@@ -40,9 +40,13 @@ interface SessionWithCounts extends Session {
   activeSubAgentCount: number;
 }
 
+const ARCHIVE_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
 interface DashboardState {
   projects: Project[];
+  archivedProjectIds: string[];
   sessions: SessionWithCounts[];
+  archivedSessions: SessionWithCounts[];
   todos: Record<string, Todo[]>;
   messages: Record<string, SessionMessages>;
   processes: OcProcess[];
@@ -114,7 +118,10 @@ async function buildState(): Promise<DashboardState | { error: string }> {
       activeSessionIds = new Set(newestSessionPerCwd.values());
     }
 
-    const sessions: SessionWithCounts[] = rawSessions.map(s => {
+    const now = Date.now();
+    const archiveCutoff = now - ARCHIVE_THRESHOLD_MS;
+
+    const allSessions: SessionWithCounts[] = rawSessions.map(s => {
       const isActive = activeSessionIds.has(s.id);
       return {
         ...s,
@@ -124,6 +131,21 @@ async function buildState(): Promise<DashboardState | { error: string }> {
       };
     });
 
+    const sessions: SessionWithCounts[] = [];
+    const archivedSessions: SessionWithCounts[] = [];
+    for (const s of allSessions) {
+      if (s.status === "ACTIVE" || s.timeUpdated > archiveCutoff) {
+        sessions.push(s);
+      } else {
+        archivedSessions.push(s);
+      }
+    }
+
+    const activeSessionProjectIds = new Set(sessions.map(s => s.projectId));
+    const archivedProjectIds = projects
+      .filter(p => !activeSessionProjectIds.has(p.id))
+      .map(p => p.id);
+
     const nonIdleIds = sessions.filter(s => s.status !== "IDLE").map(s => s.id);
     const todos = batchGetSessionTodos(nonIdleIds);
     const messages = batchGetLastMessages(nonIdleIds);
@@ -132,7 +154,9 @@ async function buildState(): Promise<DashboardState | { error: string }> {
 
     return {
       projects,
+      archivedProjectIds,
       sessions,
+      archivedSessions,
       todos,
       messages,
       processes,
