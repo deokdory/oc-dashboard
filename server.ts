@@ -56,6 +56,7 @@ interface DashboardState {
 }
 
 const prevStatusMap = new Map<string, string>();
+const dismissedSessions = new Set<string>();
 
 function detectTransitions(sessions: Session[]): Transition[] {
   const transitions: Transition[] = [];
@@ -123,9 +124,16 @@ async function buildState(): Promise<DashboardState | { error: string }> {
 
     const allSessions: SessionWithCounts[] = rawSessions.map(s => {
       const isActive = activeSessionIds.has(s.id);
+      let status = isActive && s.status !== "ACTIVE" ? "ACTIVE" as const : s.status;
+      if (status === "RECENT" && dismissedSessions.has(s.id)) {
+        status = "IDLE";
+      }
+      if (s.status !== "RECENT") {
+        dismissedSessions.delete(s.id);
+      }
       return {
         ...s,
-        status: isActive && s.status !== "ACTIVE" ? "ACTIVE" as const : s.status,
+        status,
         subAgentCount: subAgentCounts[s.id]?.active ?? 0,
         activeSubAgentCount: subAgentCounts[s.id]?.active ?? 0,
       };
@@ -231,6 +239,21 @@ Bun.serve({
     }
 
     const sessionPathParts = url.pathname.split("/").filter(Boolean);
+    if (
+      sessionPathParts.length === 3 &&
+      sessionPathParts[0] === "sessions" &&
+      sessionPathParts[2] === "dismiss" &&
+      req.method === "POST"
+    ) {
+      const sessionId = sessionPathParts[1];
+      dismissedSessions.add(sessionId);
+      const state = await buildState();
+      broadcast(state);
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+    }
+
     if (
       sessionPathParts.length === 3 &&
       sessionPathParts[0] === "sessions" &&

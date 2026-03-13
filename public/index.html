@@ -113,13 +113,29 @@
       max-width: 160px;
     }
 
+    .sidebar-badges {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
     .sidebar-badge {
       font-size: 10px;
-      background: #21262d;
       border-radius: 10px;
       padding: 1px 6px;
-      color: var(--text-muted);
       flex-shrink: 0;
+    }
+    .sidebar-badge.badge-active {
+      background: rgba(88, 166, 255, 0.15);
+      color: var(--active);
+    }
+    .sidebar-badge.badge-complete {
+      background: rgba(63, 185, 80, 0.15);
+      color: var(--recent);
+    }
+    .sidebar-separator {
+      height: 1px;
+      background: var(--card-border);
+      margin: 6px 16px;
     }
 
     /* summary-bar */
@@ -675,18 +691,28 @@
 
       const activeProjects = projects.filter(p => !archivedProjectIds.has(p.id));
       const archivedProjects = projects.filter(p => archivedProjectIds.has(p.id));
-      const allActive = sessions.filter(s => s.status === 'ACTIVE').length;
+      const allActiveCount = sessions.filter(s => s.status === 'ACTIVE').length;
+      const allCompleteCount = sessions.filter(s => s.status === 'RECENT').length;
+
+      const renderBadges = (activeCount, completeCount) => {
+        if (activeCount === 0 && completeCount === 0) return '';
+        return `<div class="sidebar-badges">
+          ${activeCount > 0 ? `<span class="sidebar-badge badge-active">${activeCount}</span>` : ''}
+          ${completeCount > 0 ? `<span class="sidebar-badge badge-complete">${completeCount}</span>` : ''}
+        </div>`;
+      };
 
       const renderItem = (proj, extra = '') => {
         const projSessions = sessions.filter(s => s.projectId === proj.id);
         const activeCount = projSessions.filter(s => s.status === 'ACTIVE').length;
+        const completeCount = projSessions.filter(s => s.status === 'RECENT').length;
         const isSelected = selectedProjectId === proj.id;
         return `
           <div class="sidebar-item ${isSelected ? 'active' : ''} ${extra}"
                data-project-id="${escHtml(proj.id)}"
                onclick="selectProject('${escHtml(proj.id)}')">
             <span class="sidebar-item-name">${escHtml(proj.displayName)}</span>
-            ${activeCount > 0 ? `<span class="sidebar-badge">${activeCount}</span>` : ''}
+            ${renderBadges(activeCount, completeCount)}
           </div>
         `;
       };
@@ -704,8 +730,9 @@
              data-project-id="all"
              onclick="selectProject('all')">
           <span class="sidebar-item-name">All Projects</span>
-          ${allActive > 0 ? `<span class="sidebar-badge">${allActive}</span>` : ''}
+          ${renderBadges(allActiveCount, allCompleteCount)}
         </div>
+        <div class="sidebar-separator"></div>
         ${activeProjects.map(p => renderItem(p)).join('')}
         ${archivedSection}
       `;
@@ -748,10 +775,12 @@
 
       for (const t of data.transitions) {
         if (t.from === 'ACTIVE' && (t.to === 'RECENT' || t.to === 'IDLE') && !notifiedSessions.has(t.sessionId)) {
-          new Notification('OC Dashboard', {
+          const notif = new Notification('OC Dashboard', {
             body: `${t.title || 'Session'} completed`,
             tag: t.sessionId,
           });
+          const sid = t.sessionId;
+          notif.onclick = () => { dismissSession(sid); window.focus(); };
           notifiedSessions.add(t.sessionId);
         }
         if (t.to === 'ACTIVE') {
@@ -891,6 +920,10 @@
       if (lastData) render(lastData);
     }
 
+    function dismissSession(sessionId) {
+      fetch(`/sessions/${sessionId}/dismiss`, { method: 'POST' }).catch(() => {});
+    }
+
     function renderSessionCard(session, todos, msgData, projectName, isArchived = false) {
       const statusClass = session.status.toLowerCase();
       const progressHtml = renderCircularProgress(todos, session.status);
@@ -960,9 +993,10 @@
 
       const cardClass = isArchived ? 'card-archived' : statusClass === 'active' ? 'card-active' : statusClass === 'recent' ? 'card-recent' : '';
       const displayStatus = session.status === 'RECENT' ? 'COMPLETE' : session.status;
+      const dismissAttr = session.status === 'RECENT' ? `onclick="dismissSession('${escHtml(session.id)}')" style="cursor:pointer"` : '';
 
       return `
-        <div class="session-card ${cardClass}">
+        <div class="session-card ${cardClass}" ${dismissAttr}>
           <div class="session-card-layout">
             <div class="session-card-content">
               ${projectLabelHtml}
