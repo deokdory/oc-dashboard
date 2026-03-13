@@ -298,10 +298,11 @@ describe("batchGetLastMessages", () => {
     ]);
 
     const result = batchGetLastMessages(["s1"]);
-    expect(result["s1"]).not.toBeNull();
-    expect(result["s1"]!.role).toBe("assistant");
-    expect(result["s1"]!.agent).toBe("build");
-    expect(result["s1"]!.textPreview).toBe("Hello world response");
+    expect(result["s1"]).toBeDefined();
+    expect(result["s1"].last?.role).toBe("assistant");
+    expect(result["s1"].last?.agent).toBe("build");
+    expect(result["s1"].last?.textPreview).toBe("Hello world response");
+    expect(result["s1"].user?.role).toBe("user");
   });
 
   test("returns empty object for empty input", () => {

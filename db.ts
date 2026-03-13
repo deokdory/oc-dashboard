@@ -41,6 +41,11 @@ export interface MessagePreview {
   timeCreated: number;
 }
 
+export interface SessionMessages {
+  last: MessagePreview | null;
+  user: MessagePreview | null;
+}
+
 export interface TokenSummary {
   totalInput: number;
   totalOutput: number;
@@ -468,7 +473,7 @@ export function getLastMessage(sessionId: string): MessagePreview | null {
 
 export function batchGetLastMessages(
   sessionIds: string[],
-): Record<string, MessagePreview | null> {
+): Record<string, SessionMessages> {
   if (sessionIds.length === 0) return {};
   try {
     const db = openDb();
@@ -478,6 +483,7 @@ export function batchGetLastMessages(
         .query<
           {
             session_id: string;
+            kind: string;
             role: string;
             agent: string | null;
             time_created: number;
@@ -486,10 +492,11 @@ export function batchGetLastMessages(
           string[]
         >(
           `SELECT m.session_id,
+                  'last' as kind,
                   json_extract(m.data, '$.role') as role,
                   json_extract(m.data, '$.agent') as agent,
                   m.time_created,
-                  (SELECT substr(json_extract(p.data, '$.text'), 1, 100)
+                  (SELECT substr(json_extract(p.data, '$.text'), 1, 200)
                    FROM part p
                    WHERE p.message_id = m.id
                      AND json_extract(p.data, '$.type') = 'text'
@@ -500,18 +507,46 @@ export function batchGetLastMessages(
                SELECT MAX(m2.time_created)
                FROM message m2
                WHERE m2.session_id = m.session_id
+             )
+           UNION ALL
+           SELECT m.session_id,
+                  'user' as kind,
+                  json_extract(m.data, '$.role') as role,
+                  json_extract(m.data, '$.agent') as agent,
+                  m.time_created,
+                  (SELECT substr(json_extract(p.data, '$.text'), 1, 200)
+                   FROM part p
+                   WHERE p.message_id = m.id
+                     AND json_extract(p.data, '$.type') = 'text'
+                   ORDER BY p.time_created DESC LIMIT 1) as text_preview
+           FROM message m
+           WHERE m.session_id IN (${placeholders})
+             AND json_extract(m.data, '$.role') = 'user'
+             AND m.time_created = (
+               SELECT MAX(m3.time_created)
+               FROM message m3
+               WHERE m3.session_id = m.session_id
+                 AND json_extract(m3.data, '$.role') = 'user'
              )`,
         )
-        .all(...sessionIds);
+        .all(...sessionIds, ...sessionIds);
 
-      const result: Record<string, MessagePreview | null> = {};
+      const result: Record<string, SessionMessages> = {};
       for (const r of rows) {
-        result[r.session_id] = {
+        if (!result[r.session_id]) {
+          result[r.session_id] = { last: null, user: null };
+        }
+        const preview: MessagePreview = {
           role: r.role,
           agent: r.agent,
           textPreview: r.text_preview,
           timeCreated: r.time_created,
         };
+        if (r.kind === "last") {
+          result[r.session_id].last = preview;
+        } else {
+          result[r.session_id].user = preview;
+        }
       }
       return result;
     } finally {

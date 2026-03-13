@@ -7,18 +7,18 @@ import {
   getSubAgentSessions,
   getTokenSummary,
 } from "./db";
-import type { Project, Session, Todo, MessagePreview, SubAgentSession, TokenSummary } from "./db";
+import type { Project, Session, Todo, MessagePreview, SessionMessages, SubAgentSession, TokenSummary } from "./db";
 import { getOpenCodeProcesses, type OcProcess } from "./process";
 
 const ACTIVE_SESSIONS_PATH = `${Bun.env.HOME || ""}/.local/share/opencode/active-sessions.json`;
 
-async function readPluginActiveSessions(): Promise<Set<string>> {
+async function readPluginActiveSessions(): Promise<{ exists: boolean; ids: Set<string> }> {
   try {
     const file = Bun.file(ACTIVE_SESSIONS_PATH);
     const text = await file.text();
-    return new Set(Object.keys(JSON.parse(text)));
+    return { exists: true, ids: new Set(Object.keys(JSON.parse(text))) };
   } catch {
-    return new Set();
+    return { exists: false, ids: new Set() };
   }
 }
 
@@ -44,7 +44,7 @@ interface DashboardState {
   projects: Project[];
   sessions: SessionWithCounts[];
   todos: Record<string, Todo[]>;
-  messages: Record<string, MessagePreview | null>;
+  messages: Record<string, SessionMessages>;
   processes: OcProcess[];
   transitions: Transition[];
   tokenSummary: TokenSummary;
@@ -91,11 +91,11 @@ async function buildState(): Promise<DashboardState | { error: string }> {
     const tokenSummary = getTokenSummary(sessionIds);
 
     const processes = await getOpenCodeProcesses();
-    const pluginActiveIds = await readPluginActiveSessions();
+    const pluginResult = await readPluginActiveSessions();
 
     let activeSessionIds: Set<string>;
-    if (pluginActiveIds.size > 0) {
-      activeSessionIds = pluginActiveIds;
+    if (pluginResult.exists) {
+      activeSessionIds = pluginResult.ids;
     } else {
       const activeCwds = new Set(processes.map(p => p.cwd).filter(Boolean));
       const newestSessionPerCwd = new Map<string, string>();
