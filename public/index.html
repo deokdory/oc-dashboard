@@ -347,6 +347,17 @@
       background: linear-gradient(135deg, #1f1500 0%, var(--card) 100%);
     }
 
+    .status-badge.delegating {
+      background: #1f1030;
+      color: #b48eff;
+      border: 1px solid #b48eff;
+    }
+
+    .session-card.card-delegating {
+      border-color: rgba(180, 142, 255, 0.4);
+      background: linear-gradient(135deg, #140d20 0%, var(--card) 100%);
+    }
+
     /* circular progress */
     .progress-ring-wrap {
       flex: 1;
@@ -749,9 +760,10 @@
         : allSessions.filter(s => s.projectId === selectedProjectId);
 
       const waitingCount = filtered.filter(s => waitingSet.has(s.id)).length;
+      const delegatingCount = filtered.filter(s => !waitingSet.has(s.id) && s.status !== 'ACTIVE' && s.subAgentCount > 0).length;
       const activeCount = filtered.filter(s => s.status === 'ACTIVE' && !waitingSet.has(s.id)).length;
-      const recentCount = filtered.filter(s => s.status === 'RECENT').length;
-      const idleCount = filtered.filter(s => s.status === 'IDLE').length;
+      const recentCount = filtered.filter(s => s.status === 'RECENT' && s.subAgentCount === 0).length;
+      const idleCount = filtered.filter(s => s.status === 'IDLE' && s.subAgentCount === 0).length;
 
       let totalInput = 0, totalOutput = 0;
       for (const s of filtered) {
@@ -767,6 +779,10 @@
         <div class="stat-card">
           <span class="stat-value"${waitingCount > 0 ? ' style="color:#f0a030"' : ''}>${waitingCount}</span>
           <span class="stat-label">Waiting</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value"${delegatingCount > 0 ? ' style="color:#b48eff"' : ''}>${delegatingCount}</span>
+          <span class="stat-label">Delegating</span>
         </div>
         <div class="stat-card">
           <span class="stat-value"${recentCount > 0 ? ' style="color:var(--recent)"' : ''}>${recentCount}</span>
@@ -951,7 +967,8 @@
     }
 
     function renderSessionCard(session, todos, msgData, projectName, isArchived = false, tokenData = null, agentName = null, isWaiting = false) {
-      const statusClass = isWaiting ? 'waiting' : session.status.toLowerCase();
+      const isDelegating = !isWaiting && session.status !== 'ACTIVE' && session.subAgentCount > 0;
+      const statusClass = isWaiting ? 'waiting' : isDelegating ? 'delegating' : session.status.toLowerCase();
       const progressHtml = renderCircularProgress(todos, session.status);
 
       const lastMsg = msgData?.last;
@@ -1021,8 +1038,8 @@
         }
       }
 
-      const cardClass = isArchived ? 'card-archived' : statusClass === 'waiting' ? 'card-waiting' : statusClass === 'active' ? 'card-active' : statusClass === 'recent' ? 'card-recent' : '';
-      const displayStatus = isWaiting ? 'WAITING' : session.status === 'RECENT' ? 'COMPLETE' : session.status;
+      const cardClass = isArchived ? 'card-archived' : statusClass === 'waiting' ? 'card-waiting' : statusClass === 'delegating' ? 'card-delegating' : statusClass === 'active' ? 'card-active' : statusClass === 'recent' ? 'card-recent' : '';
+      const displayStatus = isWaiting ? 'WAITING' : isDelegating ? 'DELEGATING' : session.status === 'RECENT' ? 'COMPLETE' : session.status;
       const dismissAttr = session.status === 'RECENT' ? `onclick="dismissSession('${escHtml(session.id)}')" style="cursor:pointer"` : '';
 
       return `

@@ -219,7 +219,7 @@ function buildDemoState(): DashboardState {
       id: "ses-demo-3", projectId: "proj-api", title: "Add rate limiting middleware",
       directory: "/home/dev/api-server", timeUpdated: now - 120000, status: "RECENT",
       summaryAdditions: 156, summaryDeletions: 12, summaryFiles: 8,
-      subAgentCount: 0, activeSubAgentCount: 0,
+      subAgentCount: 1, activeSubAgentCount: 1,
     },
     {
       id: "ses-demo-4", projectId: "proj-api", title: "Database migration v2.3",
