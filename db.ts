@@ -430,6 +430,9 @@ export function batchGetPendingBackgroundTasks(
              WHERE p.session_id IN (${placeholders})
                AND json_extract(p.data, '$.tool') = 'task'
                AND json_extract(p.data, '$.state.output') LIKE '%background_task_id:%'
+               AND substr(json_extract(p.data, '$.state.output'),
+                 instr(json_extract(p.data, '$.state.output'), 'background_task_id: ') + 20,
+                 3) = 'bg_'
            ),
            collected AS (
              SELECT p.session_id,
