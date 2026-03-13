@@ -378,6 +378,33 @@ export function batchGetSessionAgents(
   }
 }
 
+export function batchGetPendingQuestions(
+  sessionIds: string[],
+): Set<string> {
+  if (sessionIds.length === 0) return new Set();
+  try {
+    const db = openDb();
+    try {
+      const placeholders = sessionIds.map(() => "?").join(",");
+      const rows = db
+        .query<{ session_id: string }, string[]>(
+          `SELECT DISTINCT p.session_id
+           FROM part p
+           WHERE p.session_id IN (${placeholders})
+             AND json_extract(p.data, '$.tool') = 'question'
+             AND json_extract(p.data, '$.state.status') = 'running'`,
+        )
+        .all(...sessionIds);
+      return new Set(rows.map((r) => r.session_id));
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    console.warn("[db] batchGetPendingQuestions error:", err);
+    return new Set();
+  }
+}
+
 export function getSessionTodos(sessionId: string): Todo[] {
   try {
     const db = openDb();

@@ -336,6 +336,17 @@
       border: 1px solid var(--idle);
     }
 
+    .status-badge.waiting {
+      background: #2d1f00;
+      color: #f0a030;
+      border: 1px solid #f0a030;
+    }
+
+    .session-card.card-waiting {
+      border-color: rgba(240, 160, 48, 0.4);
+      background: linear-gradient(135deg, #1f1500 0%, var(--card) 100%);
+    }
+
     /* circular progress */
     .progress-ring-wrap {
       flex: 1;
@@ -731,12 +742,14 @@
 
       const allSessions = data.sessions || [];
       const sessionTokens = data.sessionTokens || {};
+      const waitingSet = new Set(data.waitingSessions || []);
 
       const filtered = selectedProjectId === 'all'
         ? allSessions
         : allSessions.filter(s => s.projectId === selectedProjectId);
 
-      const activeCount = filtered.filter(s => s.status === 'ACTIVE').length;
+      const waitingCount = filtered.filter(s => waitingSet.has(s.id)).length;
+      const activeCount = filtered.filter(s => s.status === 'ACTIVE' && !waitingSet.has(s.id)).length;
       const recentCount = filtered.filter(s => s.status === 'RECENT').length;
       const idleCount = filtered.filter(s => s.status === 'IDLE').length;
 
@@ -750,6 +763,10 @@
         <div class="stat-card">
           <span class="stat-value"${activeCount > 0 ? ' style="color:var(--active)"' : ''}>${activeCount}</span>
           <span class="stat-label">Active</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value"${waitingCount > 0 ? ' style="color:#f0a030"' : ''}>${waitingCount}</span>
+          <span class="stat-label">Waiting</span>
         </div>
         <div class="stat-card">
           <span class="stat-value"${recentCount > 0 ? ' style="color:var(--recent)"' : ''}>${recentCount}</span>
@@ -846,6 +863,7 @@
       const messages = data.messages || {};
       const tokens = data.sessionTokens || {};
       const agents = data.sessionAgents || {};
+      const waitingSet = new Set(data.waitingSessions || []);
 
       const projMap = {};
       for (const p of projects) projMap[p.id] = p.displayName;
@@ -866,9 +884,9 @@
           return;
         }
 
-        const activeHtml = sorted.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], projMap[s.projectId], false, tokens[s.id], agents[s.id])).join('');
+        const activeHtml = sorted.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], projMap[s.projectId], false, tokens[s.id], agents[s.id], waitingSet.has(s.id))).join('');
         const archivedHtml = showArchivedSessions
-          ? archivedSorted.map(s => renderSessionCard(s, [], null, projMap[s.projectId], true, tokens[s.id], agents[s.id])).join('')
+          ? archivedSorted.map(s => renderSessionCard(s, [], null, projMap[s.projectId], true, tokens[s.id], agents[s.id], false)).join('')
           : '';
 
         container.innerHTML = activeHtml + renderArchiveToggle(archivedSorted.length) + archivedHtml;
@@ -892,7 +910,7 @@
           const total = projArchived.length;
           const archivedHtml = total === 0
             ? '<div class="empty-state">No sessions</div>'
-            : projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id], agents[s.id])).join('');
+            : projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id], agents[s.id], false)).join('');
           return `
             <div class="main-header">
               <span class="main-title">${escHtml(proj.displayName)}</span>
@@ -905,9 +923,9 @@
         const sessionCount = projSessions.length;
         const sessionHtml = sessionCount === 0
           ? '<div class="empty-state">No active sessions</div>'
-          : projSessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], null, false, tokens[s.id], agents[s.id])).join('');
+          : projSessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], null, false, tokens[s.id], agents[s.id], waitingSet.has(s.id))).join('');
         const archivedHtml = showArchivedSessions
-          ? projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id], agents[s.id])).join('')
+          ? projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id], agents[s.id], false)).join('')
           : '';
         return `
           <div class="main-header">
@@ -932,8 +950,8 @@
       if (notif) { notif.close(); activeNotifications.delete(sessionId); }
     }
 
-    function renderSessionCard(session, todos, msgData, projectName, isArchived = false, tokenData = null, agentName = null) {
-      const statusClass = session.status.toLowerCase();
+    function renderSessionCard(session, todos, msgData, projectName, isArchived = false, tokenData = null, agentName = null, isWaiting = false) {
+      const statusClass = isWaiting ? 'waiting' : session.status.toLowerCase();
       const progressHtml = renderCircularProgress(todos, session.status);
 
       const lastMsg = msgData?.last;
@@ -1003,8 +1021,8 @@
         }
       }
 
-      const cardClass = isArchived ? 'card-archived' : statusClass === 'active' ? 'card-active' : statusClass === 'recent' ? 'card-recent' : '';
-      const displayStatus = session.status === 'RECENT' ? 'COMPLETE' : session.status;
+      const cardClass = isArchived ? 'card-archived' : statusClass === 'waiting' ? 'card-waiting' : statusClass === 'active' ? 'card-active' : statusClass === 'recent' ? 'card-recent' : '';
+      const displayStatus = isWaiting ? 'WAITING' : session.status === 'RECENT' ? 'COMPLETE' : session.status;
       const dismissAttr = session.status === 'RECENT' ? `onclick="dismissSession('${escHtml(session.id)}')" style="cursor:pointer"` : '';
 
       return `
