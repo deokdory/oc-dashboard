@@ -235,7 +235,7 @@ export function getSubAgentCounts(
         >(
           `SELECT parent_id,
                   COUNT(*) as total,
-                  SUM(CASE WHEN ? - time_updated < 300000 THEN 1 ELSE 0 END) as active
+                  SUM(CASE WHEN ? - time_updated < 10000 THEN 1 ELSE 0 END) as active
            FROM session
            WHERE parent_id IN (${placeholders})
              AND time_archived IS NULL
