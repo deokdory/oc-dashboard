@@ -872,7 +872,7 @@
       renderProjects(data);
       const sessions = data.sessions || [];
       for (const session of sessions) {
-        if (expandedSubAgents.has(session.id) && !subAgentCache.has(session.id)) {
+        if (expandedSubAgents.has(session.id)) {
           fetchSubAgents(session.id);
         }
       }
