@@ -509,7 +509,7 @@ export function batchGetSessionTiming(
                  FROM part p
                  WHERE p.message_id = m.id
                    AND json_extract(p.data, '$.type') = 'text'
-                   AND ltrim(COALESCE(json_extract(p.data, '$.text'), '')) NOT LIKE '<system-reminder>%'
+                   AND ltrim(COALESCE(json_extract(p.data, '$.text'), ''), ' ' || char(10) || char(13) || char(9)) NOT LIKE '<system-reminder>%'
                )
            ),
            first_last AS (

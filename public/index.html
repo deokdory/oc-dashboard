@@ -678,6 +678,7 @@
     const activeNotifications = new Map();
     const expandedSubAgents = new Set(); // sessionId — expanded sub-agent list
     const subAgentCache = new Map();     // sessionId -> SubAgentSession[]
+    const loadingSubAgents = new Set();  // sessionId — in-flight fetch guard
     let lastData = null; // 최신 SSE 데이터 보관 (toggleSubAgents에서 즉시 재렌더용)
     let selectedProjectId = 'all';
     let showArchivedSessions = false;
@@ -1191,6 +1192,8 @@
     }
 
     async function fetchSubAgents(sessionId) {
+      if (loadingSubAgents.has(sessionId)) return; // 중복 호출 차단
+      loadingSubAgents.add(sessionId);
       try {
         const res = await fetch(`/sessions/${sessionId}/subagents`);
         if (!res.ok) return;
@@ -1211,6 +1214,8 @@
         }
       } catch (e) {
         console.warn('[dashboard] fetchSubAgents error:', e);
+      } finally {
+        loadingSubAgents.delete(sessionId);
       }
     }
 

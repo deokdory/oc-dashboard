@@ -87,6 +87,11 @@ describeE2E("OC Dashboard v3.1 E2E", () => {
     const statCards = page.locator(".summary-bar .stat-card");
     expect(await statCards.count()).toBeGreaterThanOrEqual(5);
 
+    const allLabels = await page.locator(".summary-bar .stat-label").allTextContents();
+    for (const required of ["Active", "Complete", "Idle", "↑ Input", "↓ Output"]) {
+      expect(allLabels).toContain(required);
+    }
+
     const firstValue = await statCards.nth(0).locator(".stat-value").textContent();
     expect(firstValue).not.toBeNull();
     expect(firstValue!.trim()).toMatch(/^\d+$/);
