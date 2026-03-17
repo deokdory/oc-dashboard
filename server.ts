@@ -319,14 +319,14 @@ function buildDemoState(): DashboardState {
   };
 
   const sessionTokens: Record<string, TokenSummary> = {
-    "ses-demo-1": { totalInput: 284500, totalOutput: 12300 },
-    "ses-demo-2": { totalInput: 95200, totalOutput: 4800 },
-    "ses-demo-3": { totalInput: 187600, totalOutput: 8900 },
-    "ses-demo-4": { totalInput: 523000, totalOutput: 31200 },
-    "ses-demo-5": { totalInput: 67400, totalOutput: 3100 },
-    "ses-demo-6": { totalInput: 412800, totalOutput: 19500 },
-    "ses-demo-old-1": { totalInput: 45000, totalOutput: 2100 },
-    "ses-demo-old-2": { totalInput: 78000, totalOutput: 5600 },
+    "ses-demo-1": { totalInput: 284500, totalOutput: 12300, latestContext: 142000 },
+    "ses-demo-2": { totalInput: 95200, totalOutput: 4800, latestContext: 48000 },
+    "ses-demo-3": { totalInput: 187600, totalOutput: 8900, latestContext: 95000 },
+    "ses-demo-4": { totalInput: 523000, totalOutput: 31200, latestContext: 210000 },
+    "ses-demo-5": { totalInput: 67400, totalOutput: 3100, latestContext: 34000 },
+    "ses-demo-6": { totalInput: 412800, totalOutput: 19500, latestContext: 172000 },
+    "ses-demo-old-1": { totalInput: 45000, totalOutput: 2100, latestContext: 23000 },
+    "ses-demo-old-2": { totalInput: 78000, totalOutput: 5600, latestContext: 40000 },
   };
 
   const sessionAgents: Record<string, string> = {
