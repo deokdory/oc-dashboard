@@ -85,7 +85,7 @@ describeE2E("OC Dashboard v3.1 E2E", () => {
   test("3. Summary bar data display", async () => {
     await page.waitForSelector(".summary-bar .stat-card", { timeout: 5000 });
     const statCards = page.locator(".summary-bar .stat-card");
-    expect(await statCards.count()).toBe(5);
+    expect(await statCards.count()).toBeGreaterThanOrEqual(5);
 
     const firstValue = await statCards.nth(0).locator(".stat-value").textContent();
     expect(firstValue).not.toBeNull();

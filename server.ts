@@ -427,7 +427,7 @@ setInterval(async () => {
   if (clients.size === 0) return;
   const state = DEMO_MODE ? buildDemoState() : await buildState();
   broadcast(state);
-}, 1_000);
+}, 2_000);
 
 const PORT = parseInt(Bun.env.PORT ?? "3333", 10);
 
