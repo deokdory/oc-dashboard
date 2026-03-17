@@ -8,6 +8,7 @@ import {
   batchGetSessionTodos,
   batchGetLastMessages,
   batchGetTokenSummary,
+  batchGetSessionTiming,
   getSubAgentCounts,
   getSubAgentSessions,
   getSessionTodos,
@@ -486,5 +487,96 @@ describe("getSubAgentSessions", () => {
     ]);
 
     expect(getSubAgentSessions("parent1")).toHaveLength(0);
+  });
+});
+
+describe("batchGetSessionTiming", () => {
+  test("excludes <system-reminder> user messages and measures last request", () => {
+    const now = Date.now();
+
+    db.run("INSERT INTO message VALUES (?, ?, ?, ?)", [
+      "m-system",
+      "s1",
+      now - 60_000,
+      JSON.stringify({ role: "user", agent: null }),
+    ]);
+    db.run("INSERT INTO part VALUES (?, ?, ?, ?)", [
+      "p-system",
+      "m-system",
+      JSON.stringify({ type: "text", text: "<system-reminder>[ALL BACKGROUND TASKS COMPLETE]" }),
+      now - 60_000,
+    ]);
+
+    db.run("INSERT INTO message VALUES (?, ?, ?, ?)", [
+      "m-user-1",
+      "s1",
+      now - 40_000,
+      JSON.stringify({ role: "user", agent: null }),
+    ]);
+    db.run("INSERT INTO part VALUES (?, ?, ?, ?)", [
+      "p-user-1",
+      "m-user-1",
+      JSON.stringify({ type: "text", text: "Please fix stale sub-agent list" }),
+      now - 40_000,
+    ]);
+
+    db.run("INSERT INTO message VALUES (?, ?, ?, ?)", [
+      "m-user-2",
+      "s1",
+      now - 20_000,
+      JSON.stringify({ role: "user", agent: null }),
+    ]);
+    db.run("INSERT INTO part VALUES (?, ?, ?, ?)", [
+      "p-user-2",
+      "m-user-2",
+      JSON.stringify({ type: "text", text: "Also show timing on session cards" }),
+      now - 20_000,
+    ]);
+
+    db.run("INSERT INTO message VALUES (?, ?, ?, ?)", [
+      "m-assistant-1",
+      "s1",
+      now - 19_000,
+      JSON.stringify({ role: "assistant", agent: "Sisyphus" }),
+    ]);
+    db.run("INSERT INTO part VALUES (?, ?, ?, ?)", [
+      "p-assistant-1",
+      "m-assistant-1",
+      JSON.stringify({ type: "text", text: "Done! Fixed the stale list." }),
+      now - 5_000,
+    ]);
+
+    const result = batchGetSessionTiming(["s1"]);
+    expect(result["s1"]).toBeDefined();
+    expect(result["s1"].firstUserRequestAt).toBe(now - 40_000);
+    expect(result["s1"].lastUserRequestAt).toBe(now - 20_000);
+    expect(result["s1"].responseEndAt).toBe(now - 5_000);
+  });
+
+  test("returns null response time when assistant has not replied yet", () => {
+    const now = Date.now();
+
+    db.run("INSERT INTO message VALUES (?, ?, ?, ?)", [
+      "m-user-only",
+      "s2",
+      now - 15_000,
+      JSON.stringify({ role: "user", agent: null }),
+    ]);
+    db.run("INSERT INTO part VALUES (?, ?, ?, ?)", [
+      "p-user-only",
+      "m-user-only",
+      JSON.stringify({ type: "text", text: "Any update?" }),
+      now - 15_000,
+    ]);
+
+    const result = batchGetSessionTiming(["s2"]);
+    expect(result["s2"]).toBeDefined();
+    expect(result["s2"].firstUserRequestAt).toBe(now - 15_000);
+    expect(result["s2"].lastUserRequestAt).toBe(now - 15_000);
+    expect(result["s2"].responseEndAt).toBeNull();
+  });
+
+  test("returns empty object for empty input", () => {
+    expect(batchGetSessionTiming([])).toEqual({});
   });
 });

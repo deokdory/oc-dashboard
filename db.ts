@@ -52,6 +52,12 @@ export interface TokenSummary {
   latestContext: number;
 }
 
+export interface SessionTiming {
+  firstUserRequestAt: number;
+  lastUserRequestAt: number;
+  responseEndAt: number | null;
+}
+
 function openDb(): Database {
   const dbPath =
     process.env.DB_PATH ??
@@ -483,6 +489,85 @@ export function batchGetPendingBackgroundTasks(
   } catch (err) {
     console.warn("[db] batchGetPendingBackgroundTasks error:", err);
     return new Set();
+  }
+}
+
+export function batchGetSessionTiming(
+  sessionIds: string[],
+): Record<string, SessionTiming> {
+  if (sessionIds.length === 0) return {};
+  try {
+    const db = openDb();
+    try {
+      const placeholders = sessionIds.map(() => "?").join(",");
+      const rows = db
+        .query<
+          {
+            session_id: string;
+            firstUserRequestAt: number;
+            lastUserRequestAt: number;
+            responseEndAt: number | null;
+          },
+          string[]
+        >(
+          `WITH real_user AS (
+             SELECT m.session_id, m.time_created
+             FROM message m
+             WHERE m.session_id IN (${placeholders})
+               AND json_extract(m.data, '$.role') = 'user'
+               AND EXISTS (
+                 SELECT 1
+                 FROM part p
+                 WHERE p.message_id = m.id
+                   AND json_extract(p.data, '$.type') = 'text'
+                   AND ltrim(COALESCE(json_extract(p.data, '$.text'), ''), ' ' || char(10) || char(13) || char(9)) NOT LIKE '<system-reminder>%'
+               )
+           ),
+           first_last AS (
+             SELECT
+               session_id,
+               MIN(time_created) AS first_user_time,
+               MAX(time_created) AS last_user_time
+             FROM real_user
+             GROUP BY session_id
+           ),
+           response_end AS (
+             SELECT
+               fl.session_id,
+               MAX(p.time_created) AS response_end_time
+             FROM first_last fl
+             LEFT JOIN message m
+               ON m.session_id = fl.session_id
+              AND json_extract(m.data, '$.role') = 'assistant'
+              AND m.time_created >= fl.last_user_time
+             LEFT JOIN part p ON p.message_id = m.id
+             GROUP BY fl.session_id
+           )
+           SELECT
+             fl.session_id,
+             fl.first_user_time AS firstUserRequestAt,
+             fl.last_user_time AS lastUserRequestAt,
+             re.response_end_time AS responseEndAt
+           FROM first_last fl
+           LEFT JOIN response_end re ON re.session_id = fl.session_id`,
+        )
+        .all(...sessionIds);
+
+      const result: Record<string, SessionTiming> = {};
+      for (const r of rows) {
+        result[r.session_id] = {
+          firstUserRequestAt: r.firstUserRequestAt,
+          lastUserRequestAt: r.lastUserRequestAt,
+          responseEndAt: r.responseEndAt,
+        };
+      }
+      return result;
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    console.warn("[db] batchGetSessionTiming error:", err);
+    return {};
   }
 }
 
