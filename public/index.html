@@ -1049,6 +1049,10 @@
         const isExpanded = expandedSubAgents.has(session.id);
         const chevron = isExpanded ? '▾' : '▸';
         badgeHtml = `<span class="sub-agent-badge" onclick="toggleSubAgents('${escHtml(session.id)}')" data-session-id="${escHtml(session.id)}">${session.subAgentCount} active sub-sessions ${chevron}</span>`;
+      } else {
+        // subagent 완료 시 expanded 상태 및 캐시 자동 정리
+        expandedSubAgents.delete(session.id);
+        subAgentCache.delete(session.id);
       }
 
       // sub-agent list (from cache or trigger fetch)
