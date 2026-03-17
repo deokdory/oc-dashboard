@@ -49,6 +49,7 @@ export interface SessionMessages {
 export interface TokenSummary {
   totalInput: number;
   totalOutput: number;
+  latestContext: number;
 }
 
 function openDb(): Database {
@@ -310,12 +311,21 @@ export function batchGetTokenSummary(
       const placeholders = sessionIds.map(() => "?").join(",");
       const rows = db
         .query<
-          { session_id: string; totalInput: number; totalOutput: number },
+          { session_id: string; totalInput: number; totalOutput: number; latestContext: number },
           string[]
         >(
           `SELECT m.session_id,
              COALESCE(SUM(json_extract(p.data, '$.tokens.input')), 0) as totalInput,
-             COALESCE(SUM(json_extract(p.data, '$.tokens.output')), 0) as totalOutput
+             COALESCE(SUM(json_extract(p.data, '$.tokens.output')), 0) as totalOutput,
+             COALESCE((
+               SELECT json_extract(p2.data, '$.tokens.total')
+               FROM part p2
+               JOIN message m2 ON p2.message_id = m2.id
+               WHERE m2.session_id = m.session_id
+                 AND json_extract(p2.data, '$.type') = 'step-finish'
+               ORDER BY p2.time_created DESC
+               LIMIT 1
+             ), 0) as latestContext
            FROM part p
            JOIN message m ON p.message_id = m.id
            WHERE m.session_id IN (${placeholders})
@@ -328,6 +338,7 @@ export function batchGetTokenSummary(
         result[r.session_id] = {
           totalInput: r.totalInput,
           totalOutput: r.totalOutput,
+          latestContext: r.latestContext,
         };
       }
       return result;

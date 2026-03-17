@@ -1088,7 +1088,7 @@
             </div>
             <div class="session-card-aside">
               <div class="session-card-aside-top">
-                ${tokenData ? `<span style="color:var(--text-muted);font-size:11px">↑${formatNumber(tokenData.totalInput)}&emsp;↓${formatNumber(tokenData.totalOutput)}</span><span style="color:var(--card-border);font-size:11px;margin:0 4px">|</span>` : ''}${timeHtml}
+                ${tokenData ? `${tokenData.latestContext >= 250000 ? `<span style="font-size:9px;font-weight:600;color:${tokenData.latestContext >= 400000 ? '#f85149' : '#f0a030'};margin-right:6px">CTX ${formatNumber(tokenData.latestContext)}</span>` : ''}<span style="color:var(--text-muted);font-size:11px">↑${formatNumber(tokenData.totalInput)}&emsp;↓${formatNumber(tokenData.totalOutput)}</span><span style="color:var(--card-border);font-size:11px;margin:0 4px">|</span>` : ''}${timeHtml}
                 <span class="status-badge ${statusClass}">${escHtml(displayStatus)}</span>
               </div>
               ${progressHtml}
