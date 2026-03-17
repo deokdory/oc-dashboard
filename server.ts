@@ -6,11 +6,21 @@ import {
   getSubAgentCounts,
   getSubAgentSessions,
   batchGetTokenSummary,
+  batchGetSessionTiming,
   batchGetSessionAgents,
   batchGetPendingQuestions,
   batchGetPendingBackgroundTasks,
 } from "./db";
-import type { Project, Session, Todo, MessagePreview, SessionMessages, SubAgentSession, TokenSummary } from "./db";
+import type {
+  Project,
+  Session,
+  Todo,
+  MessagePreview,
+  SessionMessages,
+  SubAgentSession,
+  TokenSummary,
+  SessionTiming,
+} from "./db";
 import { getOpenCodeProcesses, type OcProcess } from "./process";
 
 const ACTIVE_SESSIONS_PATH = `${Bun.env.HOME || ""}/.local/share/opencode/active-sessions.json`;
@@ -55,6 +65,7 @@ interface DashboardState {
   processes: OcProcess[];
   transitions: Transition[];
   sessionTokens: Record<string, TokenSummary>;
+  sessionTimings: Record<string, SessionTiming>;
   sessionAgents: Record<string, string>;
   waitingSessions: string[];
   delegatingSessions: string[];
@@ -165,6 +176,7 @@ async function buildState(): Promise<DashboardState | { error: string }> {
     const messages = batchGetLastMessages(nonIdleIds);
 
     const allSessionIds = [...sessions, ...archivedSessions].map(s => s.id);
+    const sessionTimings = batchGetSessionTiming(allSessionIds);
     const sessionAgents = batchGetSessionAgents(allSessionIds);
 
     const activeIds = sessions.filter(s => s.status === "ACTIVE").map(s => s.id);
@@ -187,6 +199,7 @@ async function buildState(): Promise<DashboardState | { error: string }> {
       processes,
       transitions,
       sessionTokens,
+      sessionTimings,
       sessionAgents,
       waitingSessions,
       delegatingSessions,
@@ -327,6 +340,49 @@ function buildDemoState(): DashboardState {
     "ses-demo-old-2": "Sisyphus (Ultraworker)",
   };
 
+  const sessionTimings: Record<string, SessionTiming> = {
+    "ses-demo-1": {
+      firstUserRequestAt: now - 2_400_000,
+      lastUserRequestAt: now - 60_000,
+      responseEndAt: now - 3_000,
+    },
+    "ses-demo-2": {
+      firstUserRequestAt: now - 900_000,
+      lastUserRequestAt: now - 30_000,
+      responseEndAt: now - 5_000,
+    },
+    "ses-demo-3": {
+      firstUserRequestAt: now - 1_200_000,
+      lastUserRequestAt: now - 300_000,
+      responseEndAt: now - 120_000,
+    },
+    "ses-demo-4": {
+      firstUserRequestAt: now - 8_400_000,
+      lastUserRequestAt: now - 7_500_000,
+      responseEndAt: now - 7_200_000,
+    },
+    "ses-demo-5": {
+      firstUserRequestAt: now - 420_000,
+      lastUserRequestAt: now - 20_000,
+      responseEndAt: now - 4_000,
+    },
+    "ses-demo-6": {
+      firstUserRequestAt: now - 4_200_000,
+      lastUserRequestAt: now - 600_000,
+      responseEndAt: now - 180_000,
+    },
+    "ses-demo-old-1": {
+      firstUserRequestAt: now - 5 * 86400000 - 900_000,
+      lastUserRequestAt: now - 5 * 86400000 - 600_000,
+      responseEndAt: now - 5 * 86400000 - 300_000,
+    },
+    "ses-demo-old-2": {
+      firstUserRequestAt: now - 7 * 86400000 - 1_200_000,
+      lastUserRequestAt: now - 7 * 86400000 - 900_000,
+      responseEndAt: now - 7 * 86400000 - 600_000,
+    },
+  };
+
   const processes: OcProcess[] = [
     { pid: 42150, cpu: "8.2", mem: "1.8", elapsed: "12:34.56", cwd: "/home/dev/web-app" },
     { pid: 42283, cpu: "5.1", mem: "1.4", elapsed: "08:12.03", cwd: "/home/dev/api-server" },
@@ -343,6 +399,7 @@ function buildDemoState(): DashboardState {
     processes,
     transitions: [],
     sessionTokens,
+    sessionTimings,
     sessionAgents,
     waitingSessions: [],
     delegatingSessions: ["ses-demo-3"],
@@ -370,7 +427,7 @@ setInterval(async () => {
   if (clients.size === 0) return;
   const state = DEMO_MODE ? buildDemoState() : await buildState();
   broadcast(state);
-}, 2_000);
+}, 1_000);
 
 const PORT = parseInt(Bun.env.PORT ?? "3333", 10);
 

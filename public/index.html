@@ -866,6 +866,25 @@
       return d + 'd ago';
     }
 
+    function formatDuration(ms) {
+      if (ms == null || ms < 0) return '';
+      const sec = Math.floor(ms / 1000);
+      if (sec < 60) return sec + 's';
+      const min = Math.floor(sec / 60);
+      if (min < 60) {
+        const remSec = sec % 60;
+        return remSec > 0 ? `${min}m ${remSec}s` : `${min}m`;
+      }
+      const hr = Math.floor(min / 60);
+      if (hr < 24) {
+        const remMin = min % 60;
+        return remMin > 0 ? `${hr}h ${remMin}m` : `${hr}h`;
+      }
+      const d = Math.floor(hr / 24);
+      const remHr = hr % 24;
+      return remHr > 0 ? `${d}d ${remHr}h` : `${d}d`;
+    }
+
     function render(data) {
       lastData = data;
       renderSidebar(data);
@@ -904,6 +923,7 @@
       const todos = data.todos || {};
       const messages = data.messages || {};
       const tokens = data.sessionTokens || {};
+      const timings = data.sessionTimings || {};
       const agents = data.sessionAgents || {};
       const waitingSet = new Set(data.waitingSessions || []);
       const delegatingSet = new Set(data.delegatingSessions || []);
@@ -927,9 +947,9 @@
           return;
         }
 
-        const activeHtml = sorted.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], projMap[s.projectId], false, tokens[s.id], agents[s.id], waitingSet.has(s.id), delegatingSet.has(s.id))).join('');
+        const activeHtml = sorted.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], projMap[s.projectId], false, tokens[s.id], timings[s.id], agents[s.id], waitingSet.has(s.id), delegatingSet.has(s.id))).join('');
         const archivedHtml = showArchivedSessions
-          ? archivedSorted.map(s => renderSessionCard(s, [], null, projMap[s.projectId], true, tokens[s.id], agents[s.id], false, false)).join('')
+          ? archivedSorted.map(s => renderSessionCard(s, [], null, projMap[s.projectId], true, tokens[s.id], timings[s.id], agents[s.id], false, false)).join('')
           : '';
 
         container.innerHTML = activeHtml + renderArchiveToggle(archivedSorted.length) + archivedHtml;
@@ -953,7 +973,7 @@
           const total = projArchived.length;
           const archivedHtml = total === 0
             ? '<div class="empty-state">No sessions</div>'
-            : projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id], agents[s.id], false, false)).join('');
+            : projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id], timings[s.id], agents[s.id], false, false)).join('');
           return `
             <div class="main-header">
               <span class="main-title">${escHtml(proj.displayName)}</span>
@@ -966,9 +986,9 @@
         const sessionCount = projSessions.length;
         const sessionHtml = sessionCount === 0
           ? '<div class="empty-state">No active sessions</div>'
-          : projSessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], null, false, tokens[s.id], agents[s.id], waitingSet.has(s.id), delegatingSet.has(s.id))).join('');
+          : projSessions.map(s => renderSessionCard(s, todos[s.id] || [], messages[s.id], null, false, tokens[s.id], timings[s.id], agents[s.id], waitingSet.has(s.id), delegatingSet.has(s.id))).join('');
         const archivedHtml = showArchivedSessions
-          ? projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id], agents[s.id], false, false)).join('')
+          ? projArchived.map(s => renderSessionCard(s, [], null, null, true, tokens[s.id], timings[s.id], agents[s.id], false, false)).join('')
           : '';
         return `
           <div class="main-header">
@@ -993,7 +1013,7 @@
       if (notif) { notif.close(); activeNotifications.delete(sessionId); }
     }
 
-    function renderSessionCard(session, todos, msgData, projectName, isArchived = false, tokenData = null, agentName = null, isWaiting = false, isDelegating = false) {
+    function renderSessionCard(session, todos, msgData, projectName, isArchived = false, tokenData = null, timingData = null, agentName = null, isWaiting = false, isDelegating = false) {
       const statusClass = isWaiting ? 'waiting' : isDelegating ? 'delegating' : session.status.toLowerCase();
       const progressHtml = renderCircularProgress(todos, session.status);
 
@@ -1023,6 +1043,30 @@
 
       const timeHtml = session.timeUpdated
         ? `<span style="color:var(--text-muted);font-size:11px;margin-right:8px">${relativeTime(session.timeUpdated)}</span>`
+        : '';
+
+      const now = Date.now();
+      const totalWorkMs = timingData?.firstUserRequestAt
+        ? Math.max(0, (session.timeUpdated || now) - timingData.firstUserRequestAt)
+        : null;
+      const isLive = !isArchived && (statusClass === 'active' || statusClass === 'waiting' || statusClass === 'delegating');
+      let reqLabel = '';
+      let reqMs = null;
+      if (timingData?.lastUserRequestAt) {
+        if (isLive) {
+          reqMs = Math.max(0, now - timingData.lastUserRequestAt);
+          reqLabel = 'Elapsed';
+        } else if (timingData.responseEndAt) {
+          reqMs = Math.max(0, timingData.responseEndAt - timingData.lastUserRequestAt);
+          reqLabel = 'Took';
+        }
+      }
+
+      const timingHtml = (reqMs != null || totalWorkMs != null)
+        ? `<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;font-size:10px;color:var(--text-muted)">
+             ${reqMs != null ? `<span>${reqLabel} ${formatDuration(reqMs)}</span>` : ''}
+             ${totalWorkMs != null ? `<span>Total ${formatDuration(totalWorkMs)}</span>` : ''}
+           </div>`
         : '';
 
       // git diff (null-safe: 모두 null이거나 0이면 미렌더링)
@@ -1089,6 +1133,7 @@
                 ${tokenData ? `<span style="color:var(--text-muted);font-size:11px">↑${formatNumber(tokenData.totalInput)}&emsp;↓${formatNumber(tokenData.totalOutput)}</span><span style="color:var(--card-border);font-size:11px;margin:0 4px">|</span>` : ''}${timeHtml}
                 <span class="status-badge ${statusClass}">${escHtml(displayStatus)}</span>
               </div>
+              ${timingHtml}
               ${progressHtml}
             </div>
           </div>
