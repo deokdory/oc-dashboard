@@ -1,4 +1,5 @@
 import { $ } from "bun";
+import { readlink } from "fs/promises";
 
 export interface OcProcess {
   pid: number;
@@ -30,13 +31,25 @@ export function isMainOpenCodeProcess(command: string): boolean {
 }
 
 export async function getCwd(pid: number): Promise<string> {
-  try {
-    // macOS: lsof -p PID -a -d cwd -Fn
-    const out = await $`lsof -p ${pid} -a -d cwd -Fn`.text();
-    // Output format: "n/path/to/cwd"
-    const match = out.split("\n").find((l) => l.startsWith("n"));
-    return match ? match.slice(1).trim() : "";
-  } catch {
+  if (process.platform === "linux") {
+    try {
+      const cwd = await readlink(`/proc/${pid}/cwd`);
+      return cwd.replace(/ \(deleted\)$/, "");
+    } catch {
+      return "";
+    }
+  } else if (process.platform === "darwin") {
+    try {
+      // macOS: lsof -p PID -a -d cwd -Fn
+      const out = await $`lsof -p ${pid} -a -d cwd -Fn`.text();
+      // Output format: "n/path/to/cwd"
+      const match = out.split("\n").find((l) => l.startsWith("n"));
+      return match ? match.slice(1).trim() : "";
+    } catch {
+      return "";
+    }
+  } else {
+    console.warn("[process] unsupported platform:", process.platform);
     return "";
   }
 }
