@@ -5,9 +5,8 @@ export function isPluginEntryStale(
   now: number,
   pluginTs: number,
   dbTimeUpdated: number,
-  hasProcess: boolean,
 ): boolean {
   const pluginStale = (now - pluginTs) > PLUGIN_STALE_MS;
   const dbStale = (now - dbTimeUpdated) > DB_STALE_MS;
-  return dbStale && pluginStale && !hasProcess;
+  return dbStale && pluginStale;
 }

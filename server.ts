@@ -134,9 +134,8 @@ async function buildState(): Promise<DashboardState | { error: string }> {
       for (const [id, entry] of pluginResult.entries) {
         const session = rawSessions.find(s => s.id === id);
         const dbTimeUpdated = session?.timeUpdated ?? 0;
-        const hasProcess = session ? activeCwds.has(session.directory) : false;
 
-        if (isPluginEntryStale(now, entry.ts, dbTimeUpdated, hasProcess)) {
+        if (isPluginEntryStale(now, entry.ts, dbTimeUpdated)) {
           continue;
         }
         activeSessionIds.add(id);
