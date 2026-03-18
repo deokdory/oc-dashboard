@@ -119,7 +119,7 @@ async function buildState(): Promise<DashboardState | { error: string }> {
     if (pluginResult.exists) {
       activeSessionIds = pluginResult.ids;
     } else {
-      const activeCwds = new Set(processes.map(p => p.cwd).filter(Boolean));
+      const activeCwds = new Set(processes.filter(p => !p.isWebServer).map(p => p.cwd).filter(Boolean));
       const newestSessionPerCwd = new Map<string, string>();
       for (const s of rawSessions) {
         if (!activeCwds.has(s.directory)) continue;
@@ -384,9 +384,9 @@ function buildDemoState(): DashboardState {
   };
 
   const processes: OcProcess[] = [
-    { pid: 42150, cpu: "8.2", mem: "1.8", elapsed: "12:34.56", cwd: "/home/dev/web-app" },
-    { pid: 42283, cpu: "5.1", mem: "1.4", elapsed: "08:12.03", cwd: "/home/dev/api-server" },
-    { pid: 42401, cpu: "11.7", mem: "2.1", elapsed: "03:45.21", cwd: "/home/dev/cli-tool" },
+    { pid: 42150, cpu: "8.2", mem: "1.8", elapsed: "12:34.56", cwd: "/home/dev/web-app", isWebServer: false },
+    { pid: 42283, cpu: "5.1", mem: "1.4", elapsed: "08:12.03", cwd: "/home/dev/api-server", isWebServer: false },
+    { pid: 42401, cpu: "11.7", mem: "2.1", elapsed: "03:45.21", cwd: "/home/dev/cli-tool", isWebServer: false },
   ];
 
   return {

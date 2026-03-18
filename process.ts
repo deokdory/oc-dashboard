@@ -7,6 +7,11 @@ export interface OcProcess {
   mem: string;
   elapsed: string;
   cwd: string;
+  isWebServer: boolean;
+}
+
+export function isOpenCodeWebServer(command: string): boolean {
+  return command.includes("opencode web");
 }
 
 export function isMainOpenCodeProcess(command: string): boolean {
@@ -68,8 +73,9 @@ export async function getOpenCodeProcesses(): Promise<OcProcess[]> {
     if (cols.length < 11) continue;
     
     const command = cols.slice(10).join(" ");
+    const webServer = isOpenCodeWebServer(command);
     
-    if (!isMainOpenCodeProcess(command)) continue;
+    if (!webServer && !isMainOpenCodeProcess(command)) continue;
     
     const pid = parseInt(cols[1], 10);
     if (isNaN(pid)) continue;
@@ -79,7 +85,7 @@ export async function getOpenCodeProcesses(): Promise<OcProcess[]> {
     const elapsed = cols[9]; // TIME column
     const cwd = await getCwd(pid);
     
-    processes.push({ pid, cpu, mem, elapsed, cwd });
+    processes.push({ pid, cpu, mem, elapsed, cwd, isWebServer: webServer });
   }
   
   return processes;
