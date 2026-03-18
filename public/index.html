@@ -62,7 +62,7 @@
     }
 
     .sidebar-section-label {
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
@@ -96,7 +96,7 @@
       opacity: 0.5;
     }
     .sidebar-divider {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--text-muted);
       padding: 10px 16px 4px;
       cursor: pointer;
@@ -120,7 +120,7 @@
       flex-shrink: 0;
     }
     .sidebar-badge {
-      font-size: 10px;
+      font-size: 12px;
       border-radius: 10px;
       padding: 1px 6px;
       flex-shrink: 0;
@@ -178,7 +178,7 @@
     }
 
     .stat-label {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.4px;
@@ -202,19 +202,47 @@
       grid-row: 3;
       grid-column: 1 / -1;
       background: var(--card);
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
+      border-top: 1px solid var(--card-border);
+      border-radius: 0;
       padding: 8px 12px;
       padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
       margin-bottom: 0;
       opacity: 0.6;
-      font-size: 11px;
+      font-size: 12px;
     }
 
+    .process-panel-header {
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .process-panel-chevron {
+      display: inline-block;
+      vertical-align: middle;
+      color: var(--text-muted);
+      transition: transform 0.25s ease;
+      margin-left: 6px;
+    }
+    .process-panel.collapsed .process-panel-chevron { transform: rotate(180deg); }
     .process-panel-inner {
       display: flex;
       flex-wrap: wrap;
       overflow-x: auto;
+      max-height: 200px;
+      overflow: hidden;
+      transition: max-height 0.25s ease, opacity 0.2s ease;
+      opacity: 1;
+    }
+    .process-panel.collapsed .process-panel-inner {
+      max-height: 0;
+      opacity: 0;
+    }
+    .process-summary {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-muted);
     }
 
     .process-pill {
@@ -226,6 +254,7 @@
       border-radius: 20px;
       padding: 4px 12px;
       font-size: 12px;
+      /* already 12px */
       margin: 4px;
       font-family: monospace;
     }
@@ -322,7 +351,7 @@
 
     /* status-badge */
     .status-badge {
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 600;
       padding: 2px 6px;
       border-radius: 4px;
@@ -390,22 +419,19 @@
       stroke: var(--active);
       stroke-width: 5;
       stroke-linecap: round;
-      transition: stroke-dashoffset 0.4s ease;
     }
     .card-active .progress-ring-fill { stroke: var(--active); }
     .card-recent .progress-ring-fill { stroke: var(--recent); }
     .card-delegating .progress-ring-fill { stroke: #b48eff; }
     .card-waiting .progress-ring-fill { stroke: #f0a030; }
     .progress-ring-text {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
       fill: var(--text);
       dominant-baseline: central;
       text-anchor: middle;
     }
-    .progress-spinner svg {
-      animation: spin-ring 1s linear infinite;
-    }
+    /* spin-ring animation applied via inline style with delay compensation */
     @keyframes spin-ring {
       to { transform: rotate(360deg); }
     }
@@ -424,7 +450,7 @@
       line-height: 1.4;
     }
     .message-assistant {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--text-muted);
       overflow: hidden;
       text-overflow: ellipsis;
@@ -447,7 +473,7 @@
     }
     .archive-toggle:hover { color: var(--text); }
     .archive-toggle-chevron {
-      font-size: 10px;
+      font-size: 12px;
       transition: transform 0.2s;
     }
     .archive-toggle-chevron.open { transform: rotate(90deg); }
@@ -504,7 +530,7 @@
 
     /* chevron */
     .chevron {
-      font-size: 10px;
+      font-size: 12px;
       color: var(--text-muted);
       margin-left: 6px;
       transition: transform 0.2s;
@@ -515,22 +541,27 @@
     }
 
     /* sub-agent badge */
+    .sub-agent-chevron {
+      transition: transform 0.25s ease;
+      vertical-align: middle;
+    }
+    .sub-agent-chevron.expanded { transform: rotate(180deg); }
     .sub-agent-badge {
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      background: #1c2128;
-      border: 1px solid #30363d;
-      border-radius: 10px;
-      padding: 1px 8px;
-      font-size: 10px;
+      background: none;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      font-size: 12px;
       color: var(--text-muted);
       cursor: pointer;
       user-select: none;
       margin-top: 4px;
-      transition: background 0.15s;
+      transition: color 0.15s;
     }
-    .sub-agent-badge:hover { background: #21262d; color: var(--text); }
+    .sub-agent-badge:hover { color: var(--text); }
 
     /* sub-agent list */
     .sub-agent-list {
@@ -543,11 +574,11 @@
       align-items: center;
       gap: 6px;
       padding: 3px 0;
-      font-size: 11px;
+      font-size: 12px;
       color: var(--text-muted);
     }
     .sub-agent-item .agent-name {
-      font-size: 10px;
+      font-size: 12px;
       color: var(--accent);
       font-weight: 600;
       flex-shrink: 0;
@@ -558,7 +589,7 @@
       white-space: nowrap;
     }
     .sub-agent-loading {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--text-muted);
       font-style: italic;
       margin-top: 4px;
@@ -593,7 +624,7 @@
 
     /* git-diff */
     .git-diff {
-      font-size: 11px;
+      font-size: 12px;
       margin-top: 4px;
       display: flex;
       gap: 6px;
@@ -613,15 +644,209 @@
     .git-diff-files {
       color: var(--text-muted);
     }
+
+    /* mobile-only elements — hidden on desktop */
+    .mobile-progress { display: none; }
+
+
+
+    /* mobile menu button — hidden on desktop */
+    .mobile-menu-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 6px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mobile-menu-btn:hover { background: #21262d; }
+
+    /* sidebar overlay backdrop — hidden by default */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 999;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sidebar-overlay.active { display: block; }
+
+    /* ===== MOBILE RESPONSIVE (≤768px) ===== */
+    @media (max-width: 768px) {
+      body {
+        grid-template-columns: 1fr;
+      }
+
+      /* hamburger visible */
+      .mobile-menu-btn { display: flex; }
+
+      /* header compact */
+      header { padding: 10px 12px; }
+      header h1 { font-size: 17px; }
+
+      /* sidebar: off-canvas overlay */
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        z-index: 1000;
+        transform: translateX(-100%);
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        grid-row: auto;
+        padding-top: calc(8px + env(safe-area-inset-top, 0px));
+      }
+      .sidebar.open { transform: translateX(0); }
+
+      /* main content: full width */
+      .main-content {
+        grid-column: 1;
+        padding: 12px;
+      }
+
+      /* process panel: full width */
+      .process-panel { grid-column: 1; }
+
+      /* session card: vertical stack */
+      .session-card { padding: 12px; }
+      .session-card-layout { flex-direction: column; }
+      .session-card-aside {
+        margin-left: 0;
+        margin-top: 10px;
+        flex-direction: column;
+        gap: 6px;
+        padding-top: 10px;
+        border-top: 1px solid var(--card-border);
+      }
+      .session-card-aside-top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+      }
+
+
+
+      /* hide circular progress on mobile, show linear bar */
+      .progress-ring-wrap { display: none !important; }
+      .mobile-progress {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-top: 8px;
+      }
+      .mobile-progress-track {
+        flex: 1;
+        height: 4px;
+        background: #30363d;
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .mobile-progress-fill {
+        height: 100%;
+        border-radius: 2px;
+        background: var(--active);
+      }
+      .mobile-progress-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        flex-shrink: 0;
+      }
+      .card-active .mobile-progress-fill { background: var(--active); }
+      .card-recent .mobile-progress-fill { background: var(--recent); }
+      .card-waiting .mobile-progress-fill { background: #f0a030; }
+      .card-delegating .mobile-progress-fill { background: #b48eff; }
+
+      /* indeterminate animation applied via inline style with delay compensation */
+      .mobile-progress-indeterminate {
+        width: 30% !important;
+      }
+      @keyframes mobile-progress-slide {
+        0% { transform: translateX(-100%); }
+        50% { transform: translateX(333%); }
+        100% { transform: translateX(-100%); }
+      }
+
+      /* timing row: separate line on mobile */
+      .timing-row {
+        justify-content: flex-start !important;
+      }
+
+      /* session title: allow wrap on mobile */
+      .session-title { font-size: 15px; }
+
+      /* minimum font size 12px on mobile */
+      .session-card { font-size: 12px; }
+      .git-diff { font-size: 12px; }
+      .timing-row { font-size: 12px !important; }
+      .stat-label { font-size: 12px !important; }
+      .status-badge { font-size: 12px; }
+      .process-pill { font-size: 12px; }
+      .process-summary { font-size: 12px; }
+      .sub-agent-list { font-size: 12px; }
+      .sub-agent-list .status-badge { font-size: 12px; }
+
+      /* touch-friendly targets (min 44px) */
+      .sidebar-item {
+        padding: 12px 16px;
+        min-height: 44px;
+      }
+      .project-header {
+        padding: 12px 16px;
+        min-height: 44px;
+      }
+
+      /* summary: compact */
+      .summary-row { grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); }
+      .stat-card { padding: 6px 10px; }
+      .stat-value { font-size: 16px; }
+          .stat-label {
+      font-size: 12px; }
+
+      /* process panel: mobile overrides */
+      .process-panel { padding: 6px 8px; }
+      .process-pill { padding: 3px 8px; }
+
+      /* notification banner: stack on mobile */
+      .notification-banner {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+      }
+
+      /* main header */
+      .main-header { margin-bottom: 8px; }
+      .main-title { font-size: 14px; }
+
+      /* sub-agent items */
+      .sub-agent-list { padding-left: 8px; }
+    }
   </style>
 </head>
 <body>
 
   <header>
-    <h1 style="margin:0;font-size:20px;font-weight:600">OC Dashboard</h1>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="mobile-menu-btn" id="menu-btn" onclick="toggleSidebar()" aria-label="Menu">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+          <rect y="3" width="20" height="2" rx="1"/>
+          <rect y="9" width="20" height="2" rx="1"/>
+          <rect y="15" width="20" height="2" rx="1"/>
+        </svg>
+      </button>
+      <h1 style="margin:0;font-size:20px;font-weight:600">OC Dashboard</h1>
+    </div>
     <span id="conn-status" class="connection-status disconnected">● Disconnected</span>
   </header>
 
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-section-label">Projects</div>
     <div id="sidebar-list">
@@ -643,8 +868,11 @@
     </div>
   </section>
 
-  <section class="process-panel">
-    <div class="section-label">Running Processes</div>
+  <section class="process-panel" id="process-panel">
+    <div class="section-label process-panel-header" id="process-header">
+      <span style="display:flex;align-items:center;gap:6px"><svg class="process-panel-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,5 7,9 11,5"/></svg>Running Processes</span>
+      <span class="process-summary" id="process-summary"></span>
+    </div>
     <div class="process-panel-inner" id="process-list">
       <span class="empty-state">No running processes</span>
     </div>
@@ -776,8 +1004,25 @@
       if (lastData) render(lastData);
     }
 
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      const isOpen = sidebar.classList.toggle('open');
+      overlay.classList.toggle('active', isOpen);
+      document.body.style.overflow = isOpen ? 'hidden' : '';
+    }
+
+    function closeSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      sidebar.classList.remove('open');
+      overlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
     function selectProject(projectId) {
       selectedProjectId = projectId;
+      closeSidebar();
       if (lastData) render(lastData);
     }
 
@@ -919,12 +1164,32 @@
       checkNotifications(data);
     }
 
+    let processesCollapsed = true;
+
     function renderProcesses(processes) {
       const panel = document.getElementById('process-list');
+      const summary = document.getElementById('process-summary');
+      const section = document.getElementById('process-panel');
+
       if (!processes.length) {
         panel.innerHTML = '<span class="empty-state">No running processes</span>';
+        if (summary) summary.textContent = '';
+        section?.classList.remove('collapsed');
         return;
       }
+
+      // summary line
+      const totalCpu = processes.reduce((s, p) => s + parseFloat(p.cpu || 0), 0);
+      const totalMem = processes.reduce((s, p) => s + parseFloat(p.mem || 0), 0);
+      if (summary) {
+        summary.textContent = `${processes.length} · CPU ${totalCpu.toFixed(1)}% · MEM ${totalMem.toFixed(1)}%`;
+      }
+
+      // collapsed state (mobile)
+      if (section) {
+        section.classList.toggle('collapsed', processesCollapsed);
+      }
+
       panel.innerHTML = processes.map(p => `
         <span class="process-pill">
           <span style="color:${p.isWebServer ? '#f778ba' : 'var(--active)'}">●</span>
@@ -933,6 +1198,14 @@
         </span>
       `).join('');
     }
+
+    function toggleProcessPanel() {
+      processesCollapsed = !processesCollapsed;
+      const section = document.getElementById('process-panel');
+      if (section) section.classList.toggle('collapsed', processesCollapsed);
+    }
+
+    document.getElementById('process-header')?.addEventListener('click', toggleProcessPanel);
 
     function renderProjects(data) {
       const container = document.getElementById('projects-container');
@@ -1034,13 +1307,14 @@
 
     function renderSessionCard(session, todos, msgData, projectName, isArchived = false, tokenData = null, timingData = null, agentName = null, isWaiting = false, isDelegating = false) {
       const statusClass = isWaiting ? 'waiting' : isDelegating ? 'delegating' : session.status.toLowerCase();
-      const progressHtml = renderCircularProgress(todos, session.status);
+      const effectiveStatus = isWaiting ? 'WAITING' : isDelegating ? 'DELEGATING' : session.status;
+      const progressHtml = renderCircularProgress(todos, effectiveStatus);
 
       const lastMsg = msgData?.last;
       const userMsg = msgData?.user;
 
       const projectLabelHtml = projectName
-        ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${escHtml(projectName)}</div>`
+        ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">${escHtml(projectName)}</div>`
         : '';
 
       const agentHtml = agentName
@@ -1061,7 +1335,7 @@
       }
 
       const timeHtml = session.timeUpdated
-        ? `<span data-relative-time="${session.timeUpdated}" style="color:var(--text-muted);font-size:11px;margin-right:8px">${relativeTime(session.timeUpdated)}</span>`
+        ? `<span data-relative-time="${session.timeUpdated}" style="color:var(--text-muted);font-size:12px;margin-right:8px">${relativeTime(session.timeUpdated)}</span>`
         : '';
 
       const now = Date.now();
@@ -1082,7 +1356,7 @@
       }
 
       const timingHtml = (reqMs != null || totalWorkMs != null)
-        ? `<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;font-size:10px;color:var(--text-muted)">
+        ? `<div class="timing-row" style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;font-size:12px;color:var(--text-muted)">
              ${reqMs != null ? (isLive
                ? `<span data-elapsed-since="${timingData.lastUserRequestAt}">${reqLabel} ${formatDuration(reqMs)}</span>`
                : `<span>${reqLabel} ${formatDuration(reqMs)}</span>`) : ''}
@@ -1114,8 +1388,8 @@
       let badgeHtml = '';
       if (session.subAgentCount > 0) {
         const isExpanded = expandedSubAgents.has(session.id);
-        const chevron = isExpanded ? '▾' : '▸';
-        badgeHtml = `<span class="sub-agent-badge" onclick="toggleSubAgents('${escHtml(session.id)}')" data-session-id="${escHtml(session.id)}">${session.subAgentCount} active sub-sessions ${chevron}</span>`;
+        const chevronSvg = `<svg class="sub-agent-chevron${isExpanded ? ' expanded' : ''}" width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,5 7,9 11,5"/></svg>`;
+        badgeHtml = `<span class="sub-agent-badge" onclick="toggleSubAgents('${escHtml(session.id)}')" data-session-id="${escHtml(session.id)}">${chevronSvg} ${session.subAgentCount} active sub-sessions</span>`;
       } else {
         // subagent 완료 시 expanded 상태 및 캐시 자동 정리
         expandedSubAgents.delete(session.id);
@@ -1133,6 +1407,19 @@
           // 캐시 없으면 비동기 fetch 트리거
           fetchSubAgents(session.id);
         }
+      }
+
+      // linear progress bar (mobile-only)
+      let linearProgressHtml = '';
+      const hasLinearTodos = todos.some(t => t.status !== 'completed');
+      if (hasLinearTodos) {
+        const total = todos.length;
+        const done = todos.filter(t => t.status === 'completed').length;
+        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+        linearProgressHtml = `<div class="mobile-progress"><div class="mobile-progress-track"><div class="mobile-progress-fill" style="width:${pct}%"></div></div><span class="mobile-progress-label">${done}/${total}</span></div>`;
+      } else if (!isArchived && (session.status === 'ACTIVE' || isWaiting || isDelegating)) {
+        const slideDelay = -(Date.now() % 4500) / 1000;
+        linearProgressHtml = `<div class="mobile-progress"><div class="mobile-progress-track"><div class="mobile-progress-fill mobile-progress-indeterminate" style="animation:mobile-progress-slide 4.5s ease-in-out infinite ${slideDelay}s"></div></div></div>`;
       }
 
       const cardClass = isArchived ? 'card-archived' : statusClass === 'waiting' ? 'card-waiting' : statusClass === 'delegating' ? 'card-delegating' : statusClass === 'active' ? 'card-active' : statusClass === 'recent' ? 'card-recent' : '';
@@ -1153,13 +1440,14 @@
             </div>
             <div class="session-card-aside">
               <div class="session-card-aside-top">
-                ${tokenData ? `${tokenData.latestContext >= 250000 ? `<span style="font-size:9px;font-weight:600;color:${tokenData.latestContext >= 400000 ? '#f85149' : '#f0a030'};margin-right:6px">CTX ${formatNumber(tokenData.latestContext)}</span>` : ''}<span style="color:var(--text-muted);font-size:11px">↑${formatNumber(tokenData.totalInput)}&emsp;↓${formatNumber(tokenData.totalOutput)}</span><span style="color:var(--card-border);font-size:11px;margin:0 4px">|</span>` : ''}${timeHtml}
+                ${tokenData ? `${tokenData.latestContext >= 250000 ? `<span style="font-size:12px;font-weight:600;color:${tokenData.latestContext >= 400000 ? '#f85149' : '#f0a030'};margin-right:6px">CTX ${formatNumber(tokenData.latestContext)}</span>` : ''}<span style="color:var(--text-muted);font-size:12px">↑${formatNumber(tokenData.totalInput)}&emsp;↓${formatNumber(tokenData.totalOutput)}</span><span style="color:var(--card-border);font-size:12px;margin:0 4px">|</span>` : ''}${timeHtml}
                 <span class="status-badge ${statusClass}">${escHtml(displayStatus)}</span>
               </div>
               ${timingHtml}
               ${progressHtml}
             </div>
           </div>
+          ${linearProgressHtml}
         </div>
       `;
     }
@@ -1187,10 +1475,10 @@
         </div>`;
       }
 
-      if (status === 'ACTIVE') {
-        const spinDelay = -(Date.now() % 1000) / 1000;
+      if (status === 'ACTIVE' || status === 'DELEGATING' || status === 'WAITING') {
+        const spinDelay = -(Date.now() % 1500) / 1000;
         return `<div class="progress-ring-wrap progress-spinner">
-          <svg width="${size}" height="${size}" style="display:block;animation-delay:${spinDelay}s">
+          <svg width="${size}" height="${size}" style="display:block;animation:spin-ring 1.5s linear infinite ${spinDelay}s">
             <circle class="progress-ring-bg" cx="${cx}" cy="${cx}" r="${r}" />
             <circle class="progress-ring-fill" cx="${cx}" cy="${cx}" r="${r}"
               stroke-dasharray="20 ${circ - 20}" stroke-dashoffset="0" />
@@ -1207,7 +1495,7 @@
         <div class="sub-agent-item">
           ${a.agentName ? `<span class="agent-name">@${escHtml(a.agentName)}</span>` : ''}
           <span class="agent-title">${escHtml(a.title || 'Untitled')}</span>
-          <span class="status-badge ${(a.status||'IDLE').toLowerCase()}" style="font-size:9px;padding:1px 4px;">${escHtml(a.status||'IDLE')}</span>
+          <span class="status-badge ${(a.status||'IDLE').toLowerCase()}" style="font-size:12px;padding:1px 4px;">${escHtml(a.status||'IDLE')}</span>
         </div>
       `).join('')}</div>`;
     }
