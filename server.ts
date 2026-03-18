@@ -22,16 +22,27 @@ import type {
   SessionTiming,
 } from "./db";
 import { getOpenCodeProcesses, type OcProcess } from "./process";
+import { isPluginEntryStale } from "./stale";
 
 const ACTIVE_SESSIONS_PATH = `${Bun.env.HOME || ""}/.local/share/opencode/active-sessions.json`;
 
-async function readPluginActiveSessions(): Promise<{ exists: boolean; ids: Set<string> }> {
+interface PluginEntry {
+  status: string;
+  ts: number;
+}
+
+async function readPluginActiveSessions(): Promise<{ exists: boolean; entries: Map<string, PluginEntry> }> {
   try {
     const file = Bun.file(ACTIVE_SESSIONS_PATH);
     const text = await file.text();
-    return { exists: true, ids: new Set(Object.keys(JSON.parse(text))) };
+    const parsed = JSON.parse(text) as Record<string, PluginEntry>;
+    const entries = new Map<string, PluginEntry>();
+    for (const [id, entry] of Object.entries(parsed)) {
+      entries.set(id, { status: entry.status, ts: entry.ts ?? 0 });
+    }
+    return { exists: true, entries };
   } catch {
-    return { exists: false, ids: new Set() };
+    return { exists: false, entries: new Map() };
   }
 }
 
@@ -114,12 +125,23 @@ async function buildState(): Promise<DashboardState | { error: string }> {
 
     const processes = await getOpenCodeProcesses();
     const pluginResult = await readPluginActiveSessions();
+    const activeCwds = new Set(processes.filter(p => !p.isWebServer).map(p => p.cwd).filter(Boolean));
 
     let activeSessionIds: Set<string>;
     if (pluginResult.exists) {
-      activeSessionIds = pluginResult.ids;
+      activeSessionIds = new Set<string>();
+      const now = Date.now();
+      for (const [id, entry] of pluginResult.entries) {
+        const session = rawSessions.find(s => s.id === id);
+        const dbTimeUpdated = session?.timeUpdated ?? 0;
+        const hasProcess = session ? activeCwds.has(session.directory) : false;
+
+        if (isPluginEntryStale(now, entry.ts, dbTimeUpdated, hasProcess)) {
+          continue;
+        }
+        activeSessionIds.add(id);
+      }
     } else {
-      const activeCwds = new Set(processes.filter(p => !p.isWebServer).map(p => p.cwd).filter(Boolean));
       const newestSessionPerCwd = new Map<string, string>();
       for (const s of rawSessions) {
         if (!activeCwds.has(s.directory)) continue;
@@ -183,7 +205,8 @@ async function buildState(): Promise<DashboardState | { error: string }> {
     const pendingQuestions = batchGetPendingQuestions(activeIds);
     const waitingSessions = [...pendingQuestions];
 
-    const nonActiveIds = sessions.filter(s => s.status !== "ACTIVE").map(s => s.id);
+    const nonIdleSessions = sessions.filter(s => s.status !== "IDLE");
+    const nonActiveIds = nonIdleSessions.filter(s => s.status !== "ACTIVE").map(s => s.id);
     const pendingBgTasks = batchGetPendingBackgroundTasks([...activeIds, ...nonActiveIds]);
     const delegatingSessions = [...pendingBgTasks];
 
