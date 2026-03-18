@@ -913,7 +913,7 @@
       }
       panel.innerHTML = processes.map(p => `
         <span class="process-pill">
-          <span style="color:${p.isWebServer ? 'var(--text-muted)' : 'var(--active)'}">●</span>
+          <span style="color:${p.isWebServer ? '#f778ba' : 'var(--active)'}">●</span>
           ${p.isWebServer ? 'Web Server' : ''} PID ${p.pid} &nbsp; CPU ${p.cpu}% &nbsp; MEM ${p.mem}%
           <span style="color:var(--text-muted)">${escHtml(p.cwd.split('/').pop() || '/')}</span>
         </span>
