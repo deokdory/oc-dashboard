@@ -14,7 +14,7 @@ Real-time OpenCode session monitoring dashboard. Bun single-server (TypeScript +
 oc-dashboard/
 ├── server.ts      # HTTP server, SSE broadcast, state aggregation, demo mode
 ├── db.ts          # All SQLite queries — readonly access to OpenCode's DB
-├── process.ts     # macOS-only process detection (ps aux + lsof)
+├── process.ts     # Cross-platform process detection (macOS + Linux)
 ├── plugin/        # OpenCode plugin — writes active-sessions.json on session events
 │   └── index.ts
 ├── public/
@@ -37,7 +37,7 @@ oc-dashboard/
 | Session status logic | `server.ts` → `buildState()` | Merges plugin file + process detection + DB |
 | Status classification | `db.ts` → `classifyStatus()` | ACTIVE <10s, RECENT <5min, IDLE >5min |
 | Plugin behavior | `plugin/index.ts` | Writes `~/.local/share/opencode/active-sessions.json` |
-| Process detection | `process.ts` | macOS-only: `ps aux` → filter `opencode` → `lsof` for cwd |
+| Process detection | `process.ts` | Cross-platform: `ps aux` → filter `opencode` → `/proc/PID/cwd` (Linux) or `lsof` (macOS) |
 | Test setup | `tests/helpers.ts` | `createTestDbFile()` returns tmp DB + cleanup fn |
 | Demo mode | `server.ts` → `buildDemoState()` | `DEMO=true bun run server.ts` for mock data |
 
@@ -50,13 +50,14 @@ oc-dashboard/
 - **Frontend**: No build step, no framework. Raw DOM manipulation. SSE via `EventSource`. All in one HTML file.
 - **Naming**: Files are `kebab-case.ts`. Korean commit messages. Types use `interface` (not `type`).
 - **Tests**: `bun:test` with `describe/test/expect`. DB tests override `process.env.DB_PATH` with temp file.
+- **Platform detection**: `process.platform === "linux"` / `"darwin"` branching in `getCwd()`. Never use `os` module — `process.platform` is sufficient.
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
 - **NEVER** use connection pooling or keep DB handles open — `openDb()` per function is intentional (OpenCode's DB is shared)
 - **NEVER** add frontend build tooling (webpack, vite, etc.) — zero-dependency SPA is a design choice
 - **NEVER** add npm dependencies to root `package.json` unless absolutely unavoidable (playwright is for tests only)
-- **NEVER** assume Linux — process detection uses macOS-specific `lsof -p PID -a -d cwd -Fn`
+- **NEVER** assume specific platform — `getCwd()` branches on `process.platform` (`"linux"` → `/proc`, `"darwin"` → `lsof`)
 - **NEVER** write to OpenCode's DB — all DB access is `readonly: true`
 - **NEVER** use `as any` or `@ts-ignore` — strict mode is enforced
 - **AVOID** splitting `public/index.html` — the single-file approach is deliberate for zero-build deployment

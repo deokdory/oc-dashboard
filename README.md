@@ -15,8 +15,6 @@
 
 > 이 프로젝트의 모든 코드는 [OpenCode](https://opencode.ai) + [Oh My Open Agent](https://github.com/code-yeongyu/oh-my-openagent)로 구현되었습니다.
 
-> **Note**: 현재 macOS만 지원합니다. 프로세스 감지(`lsof`)가 macOS 전용입니다.
-
 ## Features
 
 | Feature | Description |
@@ -33,7 +31,7 @@
 
 ## Quick Start
 
-**Prerequisites**: macOS · [Bun](https://bun.sh) v1.0+ · [OpenCode](https://opencode.ai)
+**Prerequisites**: macOS / Linux · [Bun](https://bun.sh) v1.0+ · [OpenCode](https://opencode.ai)
 
 ```bash
 # 1. Clone
@@ -63,6 +61,7 @@ bun run server.ts
 
 ```bash
 ipconfig getifaddr en0   # macOS LAN IP 확인
+hostname -I | awk '{print $1}'  # Linux LAN IP 확인
 ```
 
 `http://<LAN_IP>:3333` 접속.
