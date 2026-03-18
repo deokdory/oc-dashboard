@@ -11,7 +11,9 @@ export interface OcProcess {
 }
 
 export function isOpenCodeWebServer(command: string): boolean {
-  return command.includes("opencode web");
+  const trimmed = command.trim();
+  const bin = trimmed.split(/\s+/)[0];
+  return (bin === "opencode" || bin.endsWith("/opencode")) && trimmed.includes("opencode web");
 }
 
 export function isMainOpenCodeProcess(command: string): boolean {
