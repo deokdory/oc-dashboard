@@ -6,7 +6,13 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshot.jpeg" alt="OC Dashboard" width="720" />
+  <img src="assets/screenshot-desktop.png" alt="OC Dashboard — Desktop" width="720" />
+</p>
+
+<p align="center">
+  <img src="assets/screenshot-mobile.png" alt="OC Dashboard — Mobile" width="280" />
+  &nbsp;&nbsp;
+  <img src="assets/screenshot-mobile-sidebar.png" alt="OC Dashboard — Mobile Sidebar" width="280" />
 </p>
 
 ---
