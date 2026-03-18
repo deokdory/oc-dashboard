@@ -407,15 +407,9 @@ export function batchGetPendingQuestions(
         .query<{ session_id: string }, string[]>(
           `SELECT DISTINCT p.session_id
            FROM part p
-           JOIN message m ON p.message_id = m.id
            WHERE p.session_id IN (${placeholders})
              AND json_extract(p.data, '$.tool') = 'question'
-             AND json_extract(p.data, '$.state.status') = 'running'
-             AND m.time_created = (
-               SELECT MAX(m2.time_created)
-               FROM message m2
-               WHERE m2.session_id = p.session_id
-             )`,
+             AND json_extract(p.data, '$.state.status') = 'running'`,
         )
         .all(...sessionIds);
       return new Set(rows.map((r) => r.session_id));
