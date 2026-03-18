@@ -8,7 +8,7 @@ export interface OcProcess {
   cwd: string;
 }
 
-function isMainOpenCodeProcess(command: string): boolean {
+export function isMainOpenCodeProcess(command: string): boolean {
   const trimmed = command.trim();
   
   // Match: "opencode" exactly, or ends with "/opencode", or starts with "opencode "
@@ -29,7 +29,7 @@ function isMainOpenCodeProcess(command: string): boolean {
   return false;
 }
 
-async function getCwd(pid: number): Promise<string> {
+export async function getCwd(pid: number): Promise<string> {
   try {
     // macOS: lsof -p PID -a -d cwd -Fn
     const out = await $`lsof -p ${pid} -a -d cwd -Fn`.text();
