@@ -12,14 +12,8 @@ export interface OcProcess {
 export function isMainOpenCodeProcess(command: string): boolean {
   const trimmed = command.trim();
   
-  // Match: "opencode" exactly, ends with "/opencode", starts with "opencode ", or full path with args
-  if (trimmed === "opencode") return true;
-  if (trimmed.endsWith("/opencode")) return true;
-  if (/^opencode\s+/.test(trimmed)) return true;
-  if (/\/opencode\s+/.test(trimmed)) return true;
-  
-  // Exclude child processes
   if (
+    trimmed.includes("opencode web") ||
     trimmed.includes("pyright") ||
     trimmed.includes("langserver") ||
     trimmed.includes("node") ||
@@ -27,6 +21,11 @@ export function isMainOpenCodeProcess(command: string): boolean {
   ) {
     return false;
   }
+  
+  if (trimmed === "opencode") return true;
+  if (trimmed.endsWith("/opencode")) return true;
+  if (/^opencode\s+/.test(trimmed)) return true;
+  if (/\/opencode\s+/.test(trimmed)) return true;
   
   return false;
 }

@@ -27,7 +27,12 @@ describe("isMainOpenCodeProcess", () => {
   });
 
   test('returns true for full path with args', () => {
-    expect(isMainOpenCodeProcess("/home/user/.opencode/bin/opencode web --hostname 0.0.0.0")).toBe(true);
+    expect(isMainOpenCodeProcess("/home/user/.opencode/bin/opencode --debug")).toBe(true);
+  });
+
+  test('returns false for "opencode web" server process', () => {
+    expect(isMainOpenCodeProcess("/home/user/.opencode/bin/opencode web --hostname 0.0.0.0")).toBe(false);
+    expect(isMainOpenCodeProcess("opencode web --port 4096")).toBe(false);
   });
 });
 
