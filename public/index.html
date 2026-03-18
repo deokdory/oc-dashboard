@@ -154,6 +154,61 @@
       margin-bottom: 12px;
     }
 
+    /* active card (collapsible status summary) */
+    .active-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      margin-bottom: 8px;
+    }
+    .active-card.has-substates { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .active-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .active-card-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .active-card-label .stat-label {
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    .active-card-label .stat-value {
+      font-size: 18px;
+    }
+    .active-card-chevron {
+      color: var(--text-muted);
+      transition: transform 0.25s ease;
+      flex-shrink: 0;
+    }
+    .active-card.expanded .active-card-chevron { transform: rotate(180deg); }
+    .active-card-breakdown {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 0.25s ease, opacity 0.2s ease;
+    }
+    .active-card.expanded .active-card-breakdown {
+      max-height: 120px;
+      opacity: 1;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--card-border);
+    }
+    .active-breakdown-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 0;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
     .summary-row {
       display: grid;
       gap: 8px;
@@ -870,8 +925,11 @@
 
   <section class="process-panel" id="process-panel">
     <div class="section-label process-panel-header" id="process-header">
-      <span style="display:flex;align-items:center;gap:6px"><svg class="process-panel-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,5 7,9 11,5"/></svg>Running Processes</span>
-      <span class="process-summary" id="process-summary"></span>
+      <span>Running Processes</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <span class="process-summary" id="process-summary"></span>
+        <svg class="process-panel-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,5 7,9 11,5"/></svg>
+      </span>
     </div>
     <div class="process-panel-inner" id="process-list">
       <span class="empty-state">No running processes</span>
@@ -1043,7 +1101,7 @@
       const delegatingCount = filtered.filter(s => delegatingSet.has(s.id) && !waitingSet.has(s.id)).length;
       const activeCount = filtered.filter(s => s.status === 'ACTIVE' && !waitingSet.has(s.id) && !delegatingSet.has(s.id)).length;
       const recentCount = filtered.filter(s => s.status === 'RECENT' && !delegatingSet.has(s.id)).length;
-      const idleCount = filtered.filter(s => s.status === 'IDLE' && !delegatingSet.has(s.id)).length;
+
 
       let totalInput = 0, totalOutput = 0;
       for (const s of filtered) {
@@ -1051,22 +1109,30 @@
         if (t) { totalInput += t.totalInput; totalOutput += t.totalOutput; }
       }
 
-      const statusCards = [
-        { value: activeCount, label: 'Active', color: activeCount > 0 ? 'var(--active)' : '', always: true },
-        { value: waitingCount, label: 'Waiting', color: '#f0a030', always: false },
-        { value: delegatingCount, label: 'Delegating', color: '#b48eff', always: false },
-        { value: recentCount, label: 'Complete', color: recentCount > 0 ? 'var(--recent)' : '', always: true },
-        { value: idleCount, label: 'Idle', color: '', always: true },
-      ].filter(c => c.always || c.value > 0);
+      const totalActive = activeCount + delegatingCount + waitingCount;
+      const hasSubStates = delegatingCount > 0 || waitingCount > 0;
+
+      // active breakdown lines (shown when expanded)
+      const breakdownLines = [];
+      if (activeCount > 0) breakdownLines.push(`<div class="active-breakdown-line"><span style="color:var(--active)">●</span> Active ${activeCount}</div>`);
+      if (delegatingCount > 0) breakdownLines.push(`<div class="active-breakdown-line"><span style="color:#b48eff">●</span> Delegating ${delegatingCount}</div>`);
+      if (waitingCount > 0) breakdownLines.push(`<div class="active-breakdown-line"><span style="color:#f0a030">●</span> Waiting ${waitingCount}</div>`);
 
       panel.innerHTML = `
-        <div class="summary-row">
-          ${statusCards.map(c => `<div class="stat-card">
-            <span class="stat-value"${c.color ? ` style="color:${c.color}"` : ''}>${c.value}</span>
-            <span class="stat-label">${c.label}</span>
-          </div>`).join('')}
+        <div class="active-card expanded">
+          <div class="active-card-header">
+            <span class="active-card-label">
+              <span class="stat-label">In Progress</span>
+              <span class="stat-value" ${totalActive > 0 ? 'style="color:var(--active)"' : ''}>${totalActive}</span>
+            </span>
+          </div>
+          ${hasSubStates ? `<div class="active-card-breakdown">${breakdownLines.join('')}</div>` : ''}
         </div>
         <div class="summary-row">
+          ${recentCount > 0 ? `<div class="stat-card">
+            <span class="stat-value" style="color:var(--recent)">${recentCount}</span>
+            <span class="stat-label">Complete</span>
+          </div>` : ''}
           <div class="stat-card">
             <span class="stat-value">${formatNumber(totalInput)}</span>
             <span class="stat-label">↑ Input</span>
@@ -1165,6 +1231,7 @@
     }
 
     let processesCollapsed = true;
+
 
     function renderProcesses(processes) {
       const panel = document.getElementById('process-list');
@@ -1389,7 +1456,7 @@
       if (session.subAgentCount > 0) {
         const isExpanded = expandedSubAgents.has(session.id);
         const chevronSvg = `<svg class="sub-agent-chevron${isExpanded ? ' expanded' : ''}" width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,5 7,9 11,5"/></svg>`;
-        badgeHtml = `<span class="sub-agent-badge" onclick="toggleSubAgents('${escHtml(session.id)}')" data-session-id="${escHtml(session.id)}">${chevronSvg} ${session.subAgentCount} active sub-sessions</span>`;
+        badgeHtml = `<span class="sub-agent-badge" onclick="toggleSubAgents('${escHtml(session.id)}')" data-session-id="${escHtml(session.id)}">${session.subAgentCount} active sub-sessions ${chevronSvg}</span>`;
       } else {
         // subagent 완료 시 expanded 상태 및 캐시 자동 정리
         expandedSubAgents.delete(session.id);
