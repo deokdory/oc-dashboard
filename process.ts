@@ -12,10 +12,11 @@ export interface OcProcess {
 export function isMainOpenCodeProcess(command: string): boolean {
   const trimmed = command.trim();
   
-  // Match: "opencode" exactly, or ends with "/opencode", or starts with "opencode "
+  // Match: "opencode" exactly, ends with "/opencode", starts with "opencode ", or full path with args
   if (trimmed === "opencode") return true;
   if (trimmed.endsWith("/opencode")) return true;
   if (/^opencode\s+/.test(trimmed)) return true;
+  if (/\/opencode\s+/.test(trimmed)) return true;
   
   // Exclude child processes
   if (

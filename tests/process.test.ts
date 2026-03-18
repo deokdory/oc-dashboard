@@ -25,6 +25,10 @@ describe("isMainOpenCodeProcess", () => {
   test('returns false for "opencode-helper"', () => {
     expect(isMainOpenCodeProcess("opencode-helper")).toBe(false);
   });
+
+  test('returns true for full path with args', () => {
+    expect(isMainOpenCodeProcess("/home/user/.opencode/bin/opencode web --hostname 0.0.0.0")).toBe(true);
+  });
 });
 
 describe("getCwd", () => {
