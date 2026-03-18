@@ -686,7 +686,7 @@
     let showArchivedSessions = false;
     let showArchivedProjects = false;
 
-    setInterval(() => { if (lastData) render(lastData); }, 1_000);
+    setInterval(() => { tickTimers(); }, 1_000);
 
     function formatNumber(n) {
       if (n == null || isNaN(n)) return '0';
@@ -890,6 +890,20 @@
       return remHr > 0 ? `${d}d ${remHr}h` : `${d}d`;
     }
 
+    function tickTimers() {
+      document.querySelectorAll('[data-relative-time]').forEach(el => {
+        el.textContent = relativeTime(Number(el.dataset.relativeTime));
+      });
+      document.querySelectorAll('[data-elapsed-since]').forEach(el => {
+        const ms = Math.max(0, Date.now() - Number(el.dataset.elapsedSince));
+        el.textContent = 'Elapsed ' + formatDuration(ms);
+      });
+      document.querySelectorAll('[data-total-since]').forEach(el => {
+        const ms = Math.max(0, Date.now() - Number(el.dataset.totalSince));
+        el.textContent = 'Total ' + formatDuration(ms);
+      });
+    }
+
     function render(data) {
       lastData = data;
       renderSidebar(data);
@@ -1047,7 +1061,7 @@
       }
 
       const timeHtml = session.timeUpdated
-        ? `<span style="color:var(--text-muted);font-size:11px;margin-right:8px">${relativeTime(session.timeUpdated)}</span>`
+        ? `<span data-relative-time="${session.timeUpdated}" style="color:var(--text-muted);font-size:11px;margin-right:8px">${relativeTime(session.timeUpdated)}</span>`
         : '';
 
       const now = Date.now();
@@ -1069,8 +1083,12 @@
 
       const timingHtml = (reqMs != null || totalWorkMs != null)
         ? `<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;font-size:10px;color:var(--text-muted)">
-             ${reqMs != null ? `<span>${reqLabel} ${formatDuration(reqMs)}</span>` : ''}
-             ${totalWorkMs != null ? `<span>Total ${formatDuration(totalWorkMs)}</span>` : ''}
+             ${reqMs != null ? (isLive
+               ? `<span data-elapsed-since="${timingData.lastUserRequestAt}">${reqLabel} ${formatDuration(reqMs)}</span>`
+               : `<span>${reqLabel} ${formatDuration(reqMs)}</span>`) : ''}
+             ${totalWorkMs != null ? (isLive
+               ? `<span data-total-since="${timingData.firstUserRequestAt}">Total ${formatDuration(totalWorkMs)}</span>`
+               : `<span>Total ${formatDuration(totalWorkMs)}</span>`) : ''}
            </div>`
         : '';
 
@@ -1170,8 +1188,9 @@
       }
 
       if (status === 'ACTIVE') {
+        const spinDelay = -(Date.now() % 1000) / 1000;
         return `<div class="progress-ring-wrap progress-spinner">
-          <svg width="${size}" height="${size}" style="display:block">
+          <svg width="${size}" height="${size}" style="display:block;animation-delay:${spinDelay}s">
             <circle class="progress-ring-bg" cx="${cx}" cy="${cx}" r="${r}" />
             <circle class="progress-ring-fill" cx="${cx}" cy="${cx}" r="${r}"
               stroke-dasharray="20 ${circ - 20}" stroke-dashoffset="0" />
