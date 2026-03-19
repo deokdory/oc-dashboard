@@ -429,9 +429,10 @@ export function batchGetPendingBackgroundTasks(
   try {
     const db = openDb();
     try {
+      const now = Date.now();
       const placeholders = sessionIds.map(() => "?").join(",");
       const rows = db
-        .query<{ session_id: string }, string[]>(
+        .query<{ session_id: string }, [...string[], ...string[], ...string[], ...string[], number]>(
           `WITH launched AS (
              SELECT p.session_id,
                substr(json_extract(p.data, '$.state.output'),
@@ -473,9 +474,15 @@ export function batchGetPendingBackgroundTasks(
            FROM launched l
            LEFT JOIN collected c ON l.session_id = c.session_id AND l.bg_id = c.bg_id
            LEFT JOIN cancel_all ca ON l.session_id = ca.session_id
-           WHERE c.bg_id IS NULL AND ca.session_id IS NULL`,
+           WHERE c.bg_id IS NULL AND ca.session_id IS NULL
+             AND EXISTS (
+               SELECT 1 FROM session s
+               WHERE s.parent_id = l.session_id
+                 AND s.time_archived IS NULL
+                 AND ? - s.time_updated < 10000
+             )`,
         )
-        .all(...sessionIds, ...sessionIds, ...sessionIds, ...sessionIds);
+        .all(...sessionIds, ...sessionIds, ...sessionIds, ...sessionIds, now);
       return new Set(rows.map((r) => r.session_id));
     } finally {
       db.close();
